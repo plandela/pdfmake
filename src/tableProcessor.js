@@ -7,7 +7,7 @@ function TableProcessor(tableNode) {
   this.tableNode = tableNode;
 }
 
-TableProcessor.prototype.beginTable = function(writer) {
+TableProcessor.prototype.beginTable = function (writer) {
   var tableNode;
   var availableWidth;
   var self = this;
@@ -39,7 +39,7 @@ TableProcessor.prototype.beginTable = function(writer) {
   function getTableInnerContentWidth() {
     var width = 0;
 
-    tableNode.table.widths.forEach(function(w) {
+    tableNode.table.widths.forEach(function (w) {
       width += w._calcWidth;
     });
 
@@ -53,7 +53,7 @@ TableProcessor.prototype.beginTable = function(writer) {
 
     rsd.push({ left: 0, rowSpan: 0 });
 
-    for(var i = 0, l = self.tableNode.table.body[0].length; i < l; i++) {
+    for (var i = 0, l = self.tableNode.table.body[0].length; i < l; i++) {
       var paddings = self.layout.paddingLeft(i, self.tableNode) + self.layout.paddingRight(i, self.tableNode);
       var lBorder = self.layout.vLineWidth(i, self.tableNode);
       lastWidth = paddings + lBorder + self.tableNode.table.widths[i]._calcWidth;
@@ -117,9 +117,9 @@ TableProcessor.prototype.beginTable = function(writer) {
   }
 };
 
-TableProcessor.prototype.onRowBreak = function(rowIndex, writer) {
+TableProcessor.prototype.onRowBreak = function (rowIndex, writer) {
   var self = this;
-  return function() {
+  return function () {
     //console.log('moving by : ', topLineWidth, rowPaddingTop);
     var offset = self.rowPaddingTop + (!self.headerRows ? self.topLineWidth : 0);
     writer.context().moveDown(offset);
@@ -127,17 +127,17 @@ TableProcessor.prototype.onRowBreak = function(rowIndex, writer) {
 
 };
 
-TableProcessor.prototype.beginRow = function(rowIndex, writer) {
+TableProcessor.prototype.beginRow = function (rowIndex, writer) {
   this.topLineWidth = this.layout.hLineWidth(rowIndex, this.tableNode);
   this.rowPaddingTop = this.layout.paddingTop(rowIndex, this.tableNode);
-  this.bottomLineWidth = this.layout.hLineWidth(rowIndex+1, this.tableNode);
+  this.bottomLineWidth = this.layout.hLineWidth(rowIndex + 1, this.tableNode);
   this.rowPaddingBottom = this.layout.paddingBottom(rowIndex, this.tableNode);
 
   this.rowCallback = this.onRowBreak(rowIndex, writer);
-  writer.tracker.startTracking('pageChanged', this.rowCallback );
-    if(this.dontBreakRows) {
-        writer.beginUnbreakableBlock();
-    }
+  writer.tracker.startTracking('pageChanged', this.rowCallback);
+	if (this.dontBreakRows) {
+		writer.beginUnbreakableBlock();
+	}
   this.rowTopY = writer.context().y;
   this.reservedAtBottom = this.bottomLineWidth + this.rowPaddingBottom;
 
@@ -146,14 +146,14 @@ TableProcessor.prototype.beginRow = function(rowIndex, writer) {
   writer.context().moveDown(this.rowPaddingTop);
 };
 
-TableProcessor.prototype.drawHorizontalLine = function(lineIndex, writer, overrideY) {
+TableProcessor.prototype.drawHorizontalLine = function (lineIndex, writer, overrideY) {
   var lineWidth = this.layout.hLineWidth(lineIndex, this.tableNode);
   if (lineWidth) {
     var offset = lineWidth / 2;
     var currentLine = null;
     var body = this.tableNode.table.body;
 
-    for(var i = 0, l = this.rowSpanData.length; i < l; i++) {
+    for (var i = 0, l = this.rowSpanData.length; i < l; i++) {
       var data = this.rowSpanData[i];
       var shouldDrawLine = !data.rowSpan;
 
@@ -207,13 +207,13 @@ TableProcessor.prototype.drawHorizontalLine = function(lineIndex, writer, overri
   }
 };
 
-TableProcessor.prototype.drawVerticalLine = function(x, y0, y1, vLineIndex, writer) {
+TableProcessor.prototype.drawVerticalLine = function (x, y0, y1, vLineIndex, writer) {
   var width = this.layout.vLineWidth(vLineIndex, this.tableNode);
   if (width === 0) return;
   writer.addVector({
     type: 'line',
-    x1: x + width/2,
-    x2: x + width/2,
+    x1: x + width / 2,
+    x2: x + width / 2,
     y1: y0,
     y2: y1,
     lineWidth: width,
@@ -221,177 +221,179 @@ TableProcessor.prototype.drawVerticalLine = function(x, y0, y1, vLineIndex, writ
   }, false, true);
 };
 
-TableProcessor.prototype.endTable = function(writer) {
+TableProcessor.prototype.endTable = function (writer) {
   if (this.cleanUpRepeatables) {
     writer.popFromRepeatables();
   }
 };
 
-TableProcessor.prototype.endRow = function(rowIndex, writer, pageBreaks) {
-    var l, i;
-    var self = this;
-    writer.tracker.stopTracking('pageChanged', this.rowCallback);
-    writer.context().moveDown(this.layout.paddingBottom(rowIndex, this.tableNode));
-    writer.context().availableHeight += this.reservedAtBottom;
+TableProcessor.prototype.endRow = function (rowIndex, writer, pageBreaks) {
+	var l, i;
+	var self = this;
+	writer.tracker.stopTracking('pageChanged', this.rowCallback);
+	writer.context().moveDown(this.layout.paddingBottom(rowIndex, this.tableNode));
+	writer.context().availableHeight += this.reservedAtBottom;
 
-    var endingPage = writer.context().page;
-    var endingY = writer.context().y;
+	var endingPage = writer.context().page;
+	var endingY = writer.context().y;
 
-    var xs = getLineXs();
+	var xs = getLineXs();
 
-    var ys = [];
+	var ys = [];
 
-    var hasBreaks = pageBreaks && pageBreaks.length > 0;
-    var body = this.tableNode.table.body;
+	var hasBreaks = pageBreaks && pageBreaks.length > 0;
+	var body = this.tableNode.table.body;
 
-    ys.push({
-      y0: this.rowTopY,
-      page: hasBreaks ? pageBreaks[0].prevPage : endingPage
-    });
+	ys.push({
+		y0: this.rowTopY,
+		page: hasBreaks ? pageBreaks[0].prevPage : endingPage
+	});
 
-    if (hasBreaks) {
-      for(i = 0, l = pageBreaks.length; i < l; i++) {
-        var pageBreak = pageBreaks[i];
-        ys[ys.length - 1].y1 = pageBreak.prevY;
+	if (hasBreaks) {
+		for (i = 0, l = pageBreaks.length; i < l; i++) {
+			var pageBreak = pageBreaks[i];
+			ys[ys.length - 1].y1 = pageBreak.prevY;
 
-        ys.push({y0: pageBreak.y, page: pageBreak.prevPage + 1});
-      }
-    }
+			ys.push({ y0: pageBreak.y, page: pageBreak.prevPage + 1 });
+		}
+	}
 
-    ys[ys.length - 1].y1 = endingY;
+	ys[ys.length - 1].y1 = endingY;
 
-    var skipOrphanePadding = (ys[0].y1 - ys[0].y0 === this.rowPaddingTop);
-    for(var yi = (skipOrphanePadding ? 1 : 0), yl = ys.length; yi < yl; yi++) {
-      var willBreak = yi < ys.length - 1;
-      var rowBreakWithoutHeader = (yi > 0 && !this.headerRows);
-      var hzLineOffset =  rowBreakWithoutHeader ? 0 : this.topLineWidth;
-      var y1 = ys[yi].y0;
-      var y2 = ys[yi].y1;
+	var skipOrphanePadding = (ys[0].y1 - ys[0].y0 === this.rowPaddingTop);
+	for (var yi = (skipOrphanePadding ? 1 : 0), yl = ys.length; yi < yl; yi++) {
+		var willBreak = yi < ys.length - 1;
+		var rowBreakWithoutHeader = (yi > 0 && !this.headerRows);
+		var hzLineOffset = rowBreakWithoutHeader ? 0 : this.topLineWidth;
+		var y1 = ys[yi].y0;
+		var y2 = ys[yi].y1;
 
-			if(willBreak) {
-				y2 = y2 + this.rowPaddingBottom;
+		if (willBreak) {
+			y2 = y2 + this.rowPaddingBottom;
+		}
+
+		if (writer.context().page != ys[yi].page) {
+			writer.context().page = ys[yi].page;
+
+			//TODO: buggy, availableHeight should be updated on every pageChanged event
+			// TableProcessor should be pageChanged listener, instead of processRow
+			this.reservedAtBottom = 0;
+		}
+
+		for (i = 0, l = xs.length; i < l; i++) {
+			var leftBorder = false, rightBorder = false;
+			var colIndex = xs[i].index;
+
+			// the current cell
+			if (colIndex < body[rowIndex].length) {
+				var cell = body[rowIndex][colIndex];
+				leftBorder = cell.border ? cell.border[0] : this.layout.defaultBorder
 			}
 
-      if (writer.context().page != ys[yi].page) {
-        writer.context().page = ys[yi].page;
+			// the cell from before column
+			if (colIndex > 0) {
+				var cell = body[rowIndex][colIndex - 1];
+				rightBorder = cell.border ? cell.border[2] : this.layout.defaultBorder
+			}
 
-        //TODO: buggy, availableHeight should be updated on every pageChanged event
-        // TableProcessor should be pageChanged listener, instead of processRow
-        this.reservedAtBottom = 0;
-      }
+			if (leftBorder || rightBorder) {
+				this.drawVerticalLine(xs[i].x, y1 - hzLineOffset, y2 + this.bottomLineWidth, xs[i].index, writer);
+			}
 
-      for(i = 0, l = xs.length; i < l; i++) {
-        var leftBorder = false, rightBorder = false;
-        var colIndex = xs[i].index;
+			if (i < l - 1) {
+				var fillColor = body[rowIndex][colIndex].fillColor;
+				if (fillColor) {
+					var wBorder = (leftBorder || rightBorder) ? this.layout.vLineWidth(colIndex, this.tableNode) : 0;
+					var xf = xs[i].x + wBorder;
+					var yf = y1 - hzLineOffset + wBorder;
+					writer.addVector({
+						type: 'rect',
+						x: xf,
+						y: yf,
+						w: xs[i + 1].x - xf,
+						h: y2 + this.bottomLineWidth - yf,
+						lineWidth: 0,
+						color: fillColor
+					}, false, true, 0);
+				}
+			}
+		}
 
-        // the current cell
-        if (colIndex < body[rowIndex].length) {
-          var cell = body[rowIndex][colIndex];
-          leftBorder = cell.border ? cell.border[0] : this.layout.defaultBorder
-        }
+		if (willBreak && this.layout.hLineWhenBroken !== false) {
+			this.drawHorizontalLine(rowIndex + 1, writer, y2);
+		}
+		if (rowBreakWithoutHeader && this.layout.hLineWhenBroken !== false) {
+			this.drawHorizontalLine(rowIndex, writer, y1);
+		}
+	}
 
-        // the cell from before column
-        if (colIndex > 0) {
-          var cell = body[rowIndex][colIndex - 1];
-          rightBorder = cell.border ? cell.border[2] : this.layout.defaultBorder
-        }
+	writer.context().page = endingPage;
+	writer.context().y = endingY;
 
-        if (leftBorder || rightBorder) {
-          this.drawVerticalLine(xs[i].x, y1 - hzLineOffset, y2 + this.bottomLineWidth, xs[i].index, writer);
-        }
+	var row = this.tableNode.table.body[rowIndex];
+	for (i = 0, l = row.length; i < l; i++) {
+		if (row[i].rowSpan) {
+			this.rowSpanData[i].rowSpan = row[i].rowSpan;
 
-        if(i < l-1) {
-          var fillColor = body[rowIndex][colIndex].fillColor;
-          if(fillColor ) {
-            var wBorder = (leftBorder || rightBorder) ? this.layout.vLineWidth(colIndex, this.tableNode) : 0;
-            var xf = xs[i].x+wBorder;
-            var yf = this.dontBreakRows ? y1 : y1 - hzLineOffset;
-            writer.addVector({
-              type: 'rect',
-              x: xf,
-              y: yf,
-              w: xs[i+1].x-xf,
-              h: y2+this.bottomLineWidth-yf,
-              lineWidth: 0,
-              color: fillColor
-            }, false, true, 0);
-          }
-        }
-      }
+			// fix colSpans
+			if (row[i].colSpan && row[i].colSpan > 1) {
+				for (var j = 1; j < row[i].rowSpan; j++) {
+					this.tableNode.table.body[rowIndex + j][i]._colSpan = row[i].colSpan;
+				}
+			}
+		}
 
-      if (willBreak && this.layout.hLineWhenBroken !== false) {
-        this.drawHorizontalLine(rowIndex + 1, writer, y2);
-      }
-      if(rowBreakWithoutHeader && this.layout.hLineWhenBroken !== false) {
-        this.drawHorizontalLine(rowIndex, writer, y1);
-      }
-    }
+		if (this.rowSpanData[i].rowSpan > 0) {
+			this.rowSpanData[i].rowSpan--;
+		}
+	}
 
-    writer.context().page = endingPage;
-    writer.context().y = endingY;
+	this.drawHorizontalLine(rowIndex + 1, writer);
 
-    var row = this.tableNode.table.body[rowIndex];
-    for(i = 0, l = row.length; i < l; i++) {
-      if (row[i].rowSpan) {
-        this.rowSpanData[i].rowSpan = row[i].rowSpan;
+	if (this.headerRows && rowIndex === this.headerRows - 1) {
+		this.headerRepeatable = writer.currentBlockToRepeatable();
+	}
 
-        // fix colSpans
-        if (row[i].colSpan && row[i].colSpan > 1) {
-          for(var j = 1; j < row[i].rowSpan; j++) {
-            this.tableNode.table.body[rowIndex + j][i]._colSpan = row[i].colSpan;
-          }
-        }
-      }
-
-      if(this.rowSpanData[i].rowSpan > 0) {
-        this.rowSpanData[i].rowSpan--;
-      }
-    }
-
-    this.drawHorizontalLine(rowIndex + 1, writer);
-
-    if(this.headerRows && rowIndex === this.headerRows - 1) {
-      this.headerRepeatable = writer.currentBlockToRepeatable();
-    }
-
-    if(this.dontBreakRows) {
-      writer.tracker.auto('pageChanged',
-        function() {
-          self.drawHorizontalLine(rowIndex, writer);
-        },
-        function() {
-          writer.commitUnbreakableBlock();
-        }
+	if (this.dontBreakRows) {
+		writer.tracker.auto('pageChanged',
+			function () {
+				if (!self.headerRows && self.layout.hLineWhenBroken !== false) {
+					self.drawHorizontalLine(rowIndex, writer);
+				}
+			},
+			function () {
+				writer.commitUnbreakableBlock();
+			}
       );
-    }
+	}
 
-    if(this.headerRepeatable && (rowIndex === (this.rowsWithoutPageBreak - 1) || rowIndex === this.tableNode.table.body.length - 1)) {
-      writer.commitUnbreakableBlock();
-      writer.pushToRepeatables(this.headerRepeatable);
-      this.cleanUpRepeatables = true;
-      this.headerRepeatable = null;
-    }
+	if (this.headerRepeatable && (rowIndex === (this.rowsWithoutPageBreak - 1) || rowIndex === this.tableNode.table.body.length - 1)) {
+		writer.commitUnbreakableBlock();
+		writer.pushToRepeatables(this.headerRepeatable);
+		this.cleanUpRepeatables = true;
+		this.headerRepeatable = null;
+	}
 
-    function getLineXs() {
-      var result = [];
-      var cols = 0;
+	function getLineXs() {
+		var result = [];
+		var cols = 0;
 
-      for(var i = 0, l = self.tableNode.table.body[rowIndex].length; i < l; i++) {
-        if (!cols) {
-          result.push({ x: self.rowSpanData[i].left, index: i});
+		for (var i = 0, l = self.tableNode.table.body[rowIndex].length; i < l; i++) {
+			if (!cols) {
+				result.push({ x: self.rowSpanData[i].left, index: i });
 
-          var item = self.tableNode.table.body[rowIndex][i];
-          cols = (item._colSpan || item.colSpan || 0);
-        }
-        if (cols > 0) {
-          cols--;
-        }
-      }
+				var item = self.tableNode.table.body[rowIndex][i];
+				cols = (item._colSpan || item.colSpan || 0);
+			}
+			if (cols > 0) {
+				cols--;
+			}
+		}
 
-      result.push({ x: self.rowSpanData[self.rowSpanData.length - 1].left, index: self.rowSpanData.length - 1});
+		result.push({ x: self.rowSpanData[self.rowSpanData.length - 1].left, index: self.rowSpanData.length - 1 });
 
-      return result;
-    }
+		return result;
+	}
 };
 
 module.exports = TableProcessor;

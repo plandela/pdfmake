@@ -3,11 +3,6 @@
 /* global BlobBuilder */
 'use strict';
 
-// Ensure the browser provides the level of support needed
-if ( ! Object.keys ) {
-	return;
-}
-
 var PdfPrinter = require('../printer');
 var FileSaver = require('../../libs/FileSaver.js/FileSaver');
 var saveAs = FileSaver.saveAs;
@@ -25,6 +20,11 @@ function Document(docDefinition, fonts, vfs) {
 	this.docDefinition = docDefinition;
 	this.fonts = fonts || defaultClientFonts;
 	this.vfs = vfs;
+}
+
+function canCreatePdf() {
+    // Ensure the browser provides the level of support needed
+    return Object.keys ? true : false;
 }
 
 Document.prototype._createDoc = function(options, callback) {
@@ -174,6 +174,8 @@ Document.prototype.getBuffer = function(cb, options) {
 
 module.exports = {
 	createPdf: function(docDefinition) {
-		return new Document(docDefinition, window.pdfMake.fonts, window.pdfMake.vfs);
+        if (canCreatePdf)
+		  return new Document(docDefinition, window.pdfMake.fonts, window.pdfMake.vfs);
+        return;
 	}
 };

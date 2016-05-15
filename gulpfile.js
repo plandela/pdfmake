@@ -66,3 +66,8 @@ gulp.task('lint', function() {
     .pipe(jshint())
 		.pipe(jshint.reporter());
 });
+
+gulp.task('watch', function() {
+    gulp.watch('./src/**', ['test', 'build']);
+    gulp.watch('./tests/**', ['test']);
+});

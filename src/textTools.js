@@ -177,8 +177,8 @@ function normalizeTextArray(array, styleContextStack) {
 	return results;
 }
 
-//TODO: support for other languages (currently only polish is supported)
-var diacriticsMap = { 'Ą': 'A', 'Ć': 'C', 'Ę': 'E', 'Ł': 'L', 'Ń': 'N', 'Ó': 'O', 'Ś': 'S', 'Ź': 'Z', 'Ż': 'Z', 'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n', 'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z' };
+//TODO: support for other languages (currently only polish, slovene, croatian is supported)
+var diacriticsMap = { 'Ą': 'A', 'Č': 'C', 'Ć': 'C', 'Đ': 'D', 'Ę': 'E', 'Ł': 'L', 'Ń': 'N', 'Ó': 'O', 'Š': 'S', 'Ś': 'S', 'Ž': 'Z', 'Ź': 'Z', 'Ż': 'Z', 'ą': 'a', 'č': 'c', 'ć': 'c', 'đ': 'đ', 'ę': 'e', 'ł': 'l', 'ń': 'n', 'ó': 'o', 'š': 'š', 'ś': 's', 'ž': 'ž', 'ź': 'z', 'ż': 'z' };
 // '  << atom.io workaround
 
 function removeDiacritics(text) {

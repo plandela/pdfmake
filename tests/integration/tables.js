@@ -242,7 +242,7 @@ describe('Integration test: tables', function () {
 			content: {
 				table: {
 					body: [
-						[{text: 'Column 1 with colspan 2', colSpan: 2}, {text: 'is not rendered at all'}, {text: 'Column 2'}]
+						[{text: 'Column 1 with colspan 2', colSpan: 2}, {text: 'Column 2'}]
 					]
 				}
 			}

@@ -39,9 +39,12 @@ DocMeasure.prototype.measureNode = function (node) {
 	}
 
 	// Deal with empty nodes to prevent crash in getNodeMargin
-	if (Object.keys(node).length === 0) {
+	var keys = Object.keys(node);
+	if (keys.length === 0) {
 		// A warning could be logged: console.warn('pdfmake: Empty node, ignoring it');
 		node = { text: '' };
+	} else if (keys.length === 1 && keys[0] === 'fillColor') {
+		node.text = '';
 	}
 
 	var self = this;
@@ -451,8 +454,11 @@ DocMeasure.prototype.measureTable = function (node) {
 
 		if (typeof node.table.widths === 'string' || node.table.widths instanceof String) {
 			node.table.widths = [node.table.widths];
-
-			while (node.table.widths.length < node.table.body[0].length) {
+			var cols = 0
+			for (var i = 0, l = node.table.body[0].length; i < l; i++) {
+				cols += node.table.body[0][i].colSpan || 1;
+			}
+			while (node.table.widths.length < cols) {
 				node.table.widths.push(node.table.widths[node.table.widths.length - 1]);
 			}
 		}

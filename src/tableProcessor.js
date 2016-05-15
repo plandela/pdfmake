@@ -267,6 +267,7 @@ TableProcessor.prototype.endRow = function (rowIndex, writer, pageBreaks) {
 		var willBreak = yi < ys.length - 1;
 		var rowBreakWithoutHeader = (yi > 0 && !this.headerRows);
 		var hzLineOffset = rowBreakWithoutHeader ? 0 : this.topLineWidth;
+		var hzLineOffsetF = rowBreakWithoutHeader ? this.topLineWidth : 0;
 		var y1 = ys[yi].y0;
 		var y2 = ys[yi].y1;
 
@@ -307,13 +308,13 @@ TableProcessor.prototype.endRow = function (rowIndex, writer, pageBreaks) {
 				if (fillColor) {
           var wBorder = (leftBorder || rightBorder) ? this.layout.vLine(colIndex, this.tableNode).width : 0;
 					var xf = xs[i].x + wBorder;
-					var yf = y1 - hzLineOffset + wBorder;
+					var yf = y1 + hzLineOffsetF;
 					writer.addVector({
 						type: 'rect',
 						x: xf,
 						y: yf,
 						w: xs[i + 1].x - xf,
-						h: y2 + this.bottomLineWidth - yf,
+						h: y2 - yf,
 						lineWidth: 0,
 						color: fillColor
 					}, false, true, 0);

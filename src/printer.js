@@ -93,7 +93,7 @@ PdfPrinter.prototype.createPdfKitDocument = function(docDefinition, options) {
 	this.pdfKitDoc = new PdfKit({ size: [ pageSize.width, pageSize.height ], compress: false});
 	this.pdfKitDoc.info.Producer = 'pdfmake';
 	this.pdfKitDoc.info.Creator = 'pdfmake';
-	
+
 	// pdf kit maintains the uppercase fieldnames from pdf spec
 	// to keep the pdfmake api consistent, the info field are defined lowercase
 	if(docDefinition.info){
@@ -104,7 +104,7 @@ PdfPrinter.prototype.createPdfKitDocument = function(docDefinition, options) {
 		this.pdfKitDoc.info.Subject = docDefinition.info.subject ? docDefinition.info.subject : null;
 		this.pdfKitDoc.info.Keywords = docDefinition.info.keywords ? docDefinition.info.keywords : null;
 	}
-	
+
 	this.fontProvider = new FontProvider(this.fontDescriptors, this.pdfKitDoc);
 
   docDefinition.images = docDefinition.images || {};
@@ -154,17 +154,17 @@ function fixPageMargins(margin) {
 function registerDefaultTableLayouts(layoutBuilder) {
   layoutBuilder.registerTableLayouts({
     noBorders: {
-      hLineWidth: function(i) { return 0; },
-      vLineWidth: function(i) { return 0; },
+      hLine: function(i) { return { width: 0 }; },
+      vLine: function(i) { return { width: 0 }; },
       paddingLeft: function(i) { return i && 4 || 0; },
       paddingRight: function(i, node) { return (i < node.table.widths.length - 1) ? 4 : 0; },
     },
     headerLineOnly: {
-      hLineWidth: function(i, node) {
-        if (i === 0 || i === node.table.body.length) return 0;
-        return (i === node.table.headerRows) ? 2 : 0;
+      hLine: function(i, node) {
+        if (i === 0 || i === node.table.body.length) return { width: 0 };
+        return { width: (i === node.table.headerRows) ? 2 : 0 };
       },
-      vLineWidth: function(i) { return 0; },
+      vLine: function(i) { return { width: 0 }; },
       paddingLeft: function(i) {
         return i === 0 ? 0 : 8;
       },
@@ -173,11 +173,12 @@ function registerDefaultTableLayouts(layoutBuilder) {
       }
     },
     lightHorizontalLines: {
-      hLineWidth: function(i, node) {
-        if (i === 0 || i === node.table.body.length) return 0;
-        return (i === node.table.headerRows) ? 2 : 1;
+      hLine: function(i, node) {
+        if (i === 0 || i === node.table.body.length) return { width: 0 };
+        if (i === node.table.headerRows) return { width: 2 };
+        return { width: 1, color: '#aaa' };
       },
-      vLineWidth: function(i) { return 0; },
+      vLine: function(i) { return { width: 0 }; },
       hLineColor: function(i) { return i === 1 ? 'black' : '#aaa'; },
       paddingLeft: function(i) {
         return i === 0 ? 0 : 8;
@@ -188,18 +189,6 @@ function registerDefaultTableLayouts(layoutBuilder) {
     }
   });
 }
-
-var defaultLayout = {
-  hLineWidth: function(i, node) { return 1; }, //return node.table.headerRows && i === node.table.headerRows && 3 || 0; },
-  vLineWidth: function(i, node) { return 1; },
-  hLineColor: function(i, node) { return 'black'; },
-  vLineColor: function(i, node) { return 'black'; },
-  paddingLeft: function(i, node) { return 4; }, //i && 4 || 0; },
-  paddingRight: function(i, node) { return 4; }, //(i < node.table.widths.length - 1) ? 4 : 0; },
-  paddingTop: function(i, node) { return 2; },
-  paddingBottom: function(i, node) { return 2; },
-  defaultBorder: true
-};
 
 function pageSize2widthAndHeight(pageSize) {
     if (typeof pageSize == 'string' || pageSize instanceof String) {
@@ -324,7 +313,7 @@ function renderVector(vector, pdfDoc) {
 	//TODO: pdf optimization (there's no need to write all properties everytime)
 	pdfDoc.lineWidth(vector.lineWidth || 1);
 	if (vector.dash) {
-		pdfDoc.dash(vector.dash.length, { space: vector.dash.space || vector.dash.length });
+    pdfDoc.dash(vector.dash.length, { space: vector.dash.space || vector.dash.length, phase: vector.dash.phase || 0 });
 	} else {
 		pdfDoc.undash();
 	}

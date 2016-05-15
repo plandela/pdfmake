@@ -34,10 +34,8 @@ var sampleTestProvider = {
 };
 
 var emptyTableLayout = {
-	hLineWidth: function(i) { return 0; },
-	vLineWidth: function(i) { return 0; },
-	hLineColor: function(i) { return 'black'; },
-	vLineColor: function(i) { return 'black'; },
+	hLine: function(i) { return { width: 0 }; },
+	vLine: function(i) { return { width: 0 }; },
 	paddingLeft: function(i) { return 0; },
 	paddingRight: function(i) { return 0; },
 	paddingTop: function(i) { return 0; },

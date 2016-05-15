@@ -37,7 +37,7 @@ DocMeasure.prototype.measureNode = function (node) {
 	} else if (typeof node == 'string' || node instanceof String) {
 		node = { text: node };
 	}
-	
+
 	// Deal with empty nodes to prevent crash in getNodeMargin
 	if (Object.keys(node).length === 0) {
 		// A warning could be logged: console.warn('pdfmake: Empty node, ignoring it');
@@ -298,7 +298,7 @@ DocMeasure.prototype.measureTable = function (node) {
 	var colSpans = [];
 	var col, row, cols, rows;
 
-	for (col = 0, cols = node.table.body[0].length; col < cols; col++) {
+	for (col = 0, cols = node.table.widths.length; col < cols; col++) {
 		var c = node.table.widths[col];
 		c._minWidth = 0;
 		c._maxWidth = 0;
@@ -351,10 +351,8 @@ DocMeasure.prototype.measureTable = function (node) {
 		}
 
 		var defaultLayout = {
-			hLineWidth: function (i, node) { return 1; }, //return node.table.headerRows && i === node.table.headerRows && 3 || 0; },
-			vLineWidth: function (i, node) { return 1; },
-			hLineColor: function (i, node) { return 'black'; },
-			vLineColor: function (i, node) { return 'black'; },
+			hLine: function(i, node) { return { width: 1 }; },
+			vLine: function(i, node) { return { width: 1 }; },
 			paddingLeft: function (i, node) { return 4; }, //i && 4 || 0; },
 			paddingRight: function (i, node) { return 4; }, //(i < node.table.widths.length - 1) ? 4 : 0; },
 			paddingTop: function (i, node) { return 2; },
@@ -371,13 +369,13 @@ DocMeasure.prototype.measureTable = function (node) {
 		var prevRightPadding = 0;
 
 		for (var i = 0, l = node.table.widths.length; i < l; i++) {
-			var lOffset = prevRightPadding + layout.vLineWidth(i, node) + layout.paddingLeft(i, node);
+			var lOffset = prevRightPadding + layout.vLine(i, node).width + layout.paddingLeft(i, node);
 			offsets.push(lOffset);
 			totalOffset += lOffset;
 			prevRightPadding = layout.paddingRight(i, node);
 		}
 
-		totalOffset += prevRightPadding + layout.vLineWidth(node.table.widths.length, node);
+		totalOffset += prevRightPadding + layout.vLine(node.table.widths.length, node).width;
 
 		return {
 			total: totalOffset,

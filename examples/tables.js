@@ -198,17 +198,15 @@ var docDefinition = {
 								]
 						},
 						layout: {
-                            hLineWidth: function(i, node) {
-                                return (i === 0 || i === node.table.body.length) ? 2 : 1;
+                            hLine: function(i, node) {
+                                if (i === 0 || i === node.table.body.length)
+                                    return { width: 2 };
+                                return { width: 1, color: 'red', dash: { length: 4 } };
                             },
-                            vLineWidth: function(i, node) {
-                                return (i === 0 || i === node.table.widths.length) ? 2 : 1;
-                            },
-                            hLineColor: function(i, node) {
-                                return (i === 0 || i === node.table.body.length) ? 'black' : 'gray';
-                            },
-                            vLineColor: function(i, node) {
-                                return (i === 0 || i === node.table.widths.length) ? 'black' : 'gray';
+                            vLine: function(i, node) {
+                                if (i === 0 || i === node.table.widths.length)
+                                    return { width: 2 };
+                                return { width: 1, color: 'blue', dash: { length: 4, space: 2, phase: 3 } };
                             },
                             // paddingLeft: function(i, node) { return 4; },
                             // paddingRight: function(i, node) { return 4; },

@@ -53,9 +53,9 @@ TableProcessor.prototype.beginTable = function (writer) {
 
     rsd.push({ left: 0, rowSpan: 0 });
 
-    for (var i = 0, l = self.tableNode.table.body[0].length; i < l; i++) {
+    for (var i = 0, l = self.tableNode.table.widths.length; i < l; i++) {
       var paddings = self.layout.paddingLeft(i, self.tableNode) + self.layout.paddingRight(i, self.tableNode);
-      var lBorder = self.layout.vLineWidth(i, self.tableNode);
+      var lBorder = self.layout.vLine(i, self.tableNode).width;
       lastWidth = paddings + lBorder + self.tableNode.table.widths[i]._calcWidth;
       rsd[rsd.length - 1].width = lastWidth;
       x += lastWidth;
@@ -128,9 +128,9 @@ TableProcessor.prototype.onRowBreak = function (rowIndex, writer) {
 };
 
 TableProcessor.prototype.beginRow = function (rowIndex, writer) {
-  this.topLineWidth = this.layout.hLineWidth(rowIndex, this.tableNode);
+  this.topLineWidth = this.layout.hLine(rowIndex, this.tableNode).width;
   this.rowPaddingTop = this.layout.paddingTop(rowIndex, this.tableNode);
-  this.bottomLineWidth = this.layout.hLineWidth(rowIndex + 1, this.tableNode);
+  this.bottomLineWidth = this.layout.hLine(rowIndex + 1, this.tableNode).width;
   this.rowPaddingBottom = this.layout.paddingBottom(rowIndex, this.tableNode);
 
   this.rowCallback = this.onRowBreak(rowIndex, writer);
@@ -147,9 +147,9 @@ TableProcessor.prototype.beginRow = function (rowIndex, writer) {
 };
 
 TableProcessor.prototype.drawHorizontalLine = function (lineIndex, writer, overrideY) {
-  var lineWidth = this.layout.hLineWidth(lineIndex, this.tableNode);
-  if (lineWidth) {
-    var offset = lineWidth / 2;
+  var line = this.layout.hLine(lineIndex, this.tableNode);
+  if (line.width) {
+    var offset = line.width / 2;
     var currentLine = null;
     var body = this.tableNode.table.body;
 
@@ -195,29 +195,31 @@ TableProcessor.prototype.drawHorizontalLine = function (lineIndex, writer, overr
             x2: currentLine.left + currentLine.width,
             y1: y,
             y2: y,
-            lineWidth: lineWidth,
-            lineColor: typeof this.layout.hLineColor === 'function' ? this.layout.hLineColor(lineIndex, this.tableNode) : this.layout.hLineColor
+            dash: line.dash,
+            lineWidth: line.width,
+            lineColor: line.color
           }, false, overrideY);
           currentLine = null;
         }
       }
     }
 
-    writer.context().moveDown(lineWidth);
+    writer.context().moveDown(line.width);
   }
 };
 
 TableProcessor.prototype.drawVerticalLine = function (x, y0, y1, vLineIndex, writer) {
-  var width = this.layout.vLineWidth(vLineIndex, this.tableNode);
-  if (width === 0) return;
+  var line = this.layout.vLine(vLineIndex, this.tableNode);
+  if (line.width === 0) return;
   writer.addVector({
     type: 'line',
-    x1: x + width / 2,
-    x2: x + width / 2,
+    x1: x + line.width/2,
+    x2: x + line.width/2,
     y1: y0,
     y2: y1,
-    lineWidth: width,
-    lineColor: typeof this.layout.vLineColor === 'function' ? this.layout.vLineColor(vLineIndex, this.tableNode) : this.layout.vLineColor
+    dash: line.dash,
+    lineWidth: line.width,
+    lineColor: line.color
   }, false, true);
 };
 
@@ -303,7 +305,7 @@ TableProcessor.prototype.endRow = function (rowIndex, writer, pageBreaks) {
 			if (i < l - 1) {
 				var fillColor = body[rowIndex][colIndex].fillColor;
 				if (fillColor) {
-					var wBorder = (leftBorder || rightBorder) ? this.layout.vLineWidth(colIndex, this.tableNode) : 0;
+          var wBorder = (leftBorder || rightBorder) ? this.layout.vLine(colIndex, this.tableNode).width : 0;
 					var xf = xs[i].x + wBorder;
 					var yf = y1 - hzLineOffset + wBorder;
 					writer.addVector({

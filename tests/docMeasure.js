@@ -17,10 +17,8 @@ var sampleTestProvider = {
 };
 
 var emptyTableLayout = {
-	hLineWidth: function(i) { return 0; },
-	vLineWidth: function(i) { return 0; },
-	hLineColor: function(i) { return 'black'; },
-	vLineColor: function(i) { return 'black'; },
+	hLine: function(i) { return { width: 0 }; },
+	vLine: function(i) { return { width: 0 }; },
 	paddingLeft: function(i) { return 0; },
 	paddingRight: function(i) { return 0; },
 	paddingTop: function(i) { return 0; },
@@ -169,8 +167,8 @@ describe('DocMeasure', function() {
 					]
 				},
 				layout: {
-					vLineWidth: function() { return 0; },
-					hLineWidth: function() { return 0; },
+					hLine: function(i) { return { width: 0 }; },
+					vLine: function(i) { return { width: 0 }; },
 					paddingLeft: function() { return 0; },
 					paddingRight: function() { return 0; }
 				}
@@ -326,7 +324,7 @@ describe('DocMeasure', function() {
 			// 5 + 3 + 4 == 12 --- the exact width of the overflowing letter in thisislongera
 			// it means we have enough space and there's no need to change column widths
 			tableNode.layout = {
-				vLineWidth: function() { return 5; },
+				vLine: function() { return { width: 5 }; },
 				paddingLeft: function() { return 3; },
 				paddingRight: function() { return 4; }
 			};

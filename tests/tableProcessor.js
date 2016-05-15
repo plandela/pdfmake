@@ -11,17 +11,11 @@ describe('TableProcessor', function () {
 
   beforeEach(function(){
     defaultLayout = {
-      hLineWidth: function (i, node) {
-        return 1;
+      hLine: function(i, node) {
+        return { width: 1 };
       }, //return node.table.headerRows && i === node.table.headerRows && 3 || 0; },
-      vLineWidth: function (i, node) {
-        return 1;
-      },
-      hLineColor: function (i, node) {
-        return 'black';
-      },
-      vLineColor: function (i, node) {
-        return 'black';
+      vLine: function(i, node) {
+        return { width: 1 };
       },
       paddingLeft: function (i, node) {
         return 4;
@@ -59,7 +53,7 @@ describe('TableProcessor', function () {
   });
 
 
-  it('should use the line colors function (regression #161)', function () {
+  it('should use the line colors function', function () {
 
     var addVectorCallCount = 0;
 
@@ -79,8 +73,8 @@ describe('TableProcessor', function () {
     };
 
     var processor = new TableProcessor(tableNode);
-    defaultLayout.vLineColor = function() {return 'nice shiny color'};
-    defaultLayout.hLineColor = function() {return 'nice shiny color'};
+    defaultLayout.vLine = function() { return { width: 1, color: 'nice shiny color'}; };
+    defaultLayout.hLine = function() { return { width: 1, color: 'nice shiny color'}; };
     processor.layout = defaultLayout;
     processor.rowSpanData = [{ left: 0, rowSpan: 0 }, { left: 0, rowSpan: 0 }]
 
@@ -88,37 +82,6 @@ describe('TableProcessor', function () {
     processor.endRow(0, writerFake, []);
 
     assert.equal(addVectorCallCount, 3)
-  });
-
-  it('should use the line colors constants (regression #161)', function () {
-
-    var addVectorCallCount = 0;
-
-    writerFake.addVector = function(vector){
-      assert.equal(vector.lineColor, 'nice shiny color');
-      addVectorCallCount ++;
-    };
-
-
-    var tableNode = {
-      table: {
-        body: [
-          ['A1', 'A2'],
-          ['B1', 'B2']
-        ]
-      }
-    };
-
-    var processor = new TableProcessor(tableNode);
-    defaultLayout.vLineColor = 'nice shiny color';
-    defaultLayout.hLineColor = 'nice shiny color';
-    processor.layout = defaultLayout;
-    processor.rowSpanData = [{ left: 0, rowSpan: 0 }, { left: 0, rowSpan: 0 }]
-
-    processor.beginRow(0, writerFake);
-    processor.endRow(0, writerFake, []);
-
-    assert.equal(addVectorCallCount, 3);
   });
 
   describe('header with nested table (issue #199)', function () {
@@ -129,7 +92,7 @@ describe('TableProcessor', function () {
           table: {
             // since extendTableWidths is not called from out tests
             // we can't use the doc-definition syntax for widths
-            // so instead of '*' we 
+            // so instead of '*' we
             widths: [ { width: '*' } ]
           },
           _offsets: {
@@ -140,8 +103,8 @@ describe('TableProcessor', function () {
             paddingRight: _.noop,
             paddingBottom: _.noop,
             paddingTop: _.noop,
-            vLineWidth: _.noop,
-            hLineWidth: _.noop
+            hLine: function(i, node) { return { width: 1 }; },
+            vLine: function(i, node) { return { width: 1 }; }
           }
         }
       };

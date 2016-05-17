@@ -253,39 +253,57 @@ function renderLine(line, x, y, pdfKitDoc) {
 	y = y || 0;
 
 	var lineHeight = line.getHeight();
+  var lineWidth = line.getWidth();
 	var ascenderHeight = line.getAscenderHeight();
 
-	textDecorator.drawBackground(line, x, y, pdfKitDoc);
+  pdfKitDoc.save();
+  if (lineWidth > line.maxWidth || line.clipHeight) {
+    var alignment = line.inlines && line.inlines.length > 0 && line.inlines[0].alignment;
+    var offset = 0;
+    switch (alignment) {
+      case 'right':
+        offset = lineWidth - line.maxWidth;
+        break;
+      case 'center':
+        offset = (lineWidth - line.maxWidth) / 2;
+        break;
+    }
+    pdfKitDoc.addContent('' + (x + offset) + ' ' + y + ' ' + (line.maxWidth - 1) + ' ' + (line.clipHeight || lineHeight) + ' re');
+    pdfKitDoc.clip();
+  }
 
-	//TODO: line.optimizeInlines();
-	for(var i = 0, l = line.inlines.length; i < l; i++) {
-		var inline = line.inlines[i];
+  textDecorator.drawBackground(line, x, y, pdfKitDoc);
 
-		pdfKitDoc.fill(inline.color || 'black');
+  //TODO: line.optimizeInlines();
+  for(var i = 0, l = line.inlines.length; i < l; i++) {
+    var inline = line.inlines[i];
 
-		pdfKitDoc.save();
-		pdfKitDoc.transform(1, 0, 0, -1, 0, pdfKitDoc.page.height);
+    pdfKitDoc.fill(inline.color || 'black');
 
+    pdfKitDoc.save();
+    pdfKitDoc.transform(1, 0, 0, -1, 0, pdfKitDoc.page.height);
 
     var encoded = inline.font.encode(inline.text);
-		pdfKitDoc.addContent('BT');
 
-		pdfKitDoc.addContent('' + (x + inline.x) + ' ' + (pdfKitDoc.page.height - y - ascenderHeight) + ' Td');
-		pdfKitDoc.addContent('/' + encoded.fontId + ' ' + inline.fontSize + ' Tf');
+    pdfKitDoc.addContent('BT');
 
-        pdfKitDoc.addContent('<' + encoded.encodedText + '> Tj');
+    pdfKitDoc.addContent('' + (x + inline.x) + ' ' + (pdfKitDoc.page.height - y - ascenderHeight) + ' Td');
+    pdfKitDoc.addContent('/' + encoded.fontId + ' ' + inline.fontSize + ' Tf');
 
-		pdfKitDoc.addContent('ET');
+    pdfKitDoc.addContent('<' + encoded.encodedText + '> Tj');
 
-		if (inline.link) {
-			pdfKitDoc.link(x + inline.x, pdfKitDoc.page.height - y - lineHeight, inline.width, lineHeight, inline.link);
-		}
+    pdfKitDoc.addContent('ET');
 
-		pdfKitDoc.restore();
-	}
+    if (inline.link) {
+      pdfKitDoc.link(x + inline.x, pdfKitDoc.page.height - y - lineHeight, inline.width, lineHeight, inline.link);
+    }
 
-	textDecorator.drawDecorations(line, x, y, pdfKitDoc);
+    pdfKitDoc.restore();
+  }
 
+  textDecorator.drawDecorations(line, x, y, pdfKitDoc);
+
+  pdfKitDoc.restore();
 }
 
 function renderWatermark(page, pdfKitDoc){

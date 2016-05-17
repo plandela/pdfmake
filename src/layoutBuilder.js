@@ -539,17 +539,21 @@ LayoutBuilder.prototype.processTable = function(tableNode) {
 
 // leafs (texts)
 LayoutBuilder.prototype.processLeaf = function(node) {
-	var line = this.buildNextLine(node);
-  var currentHeight = (line) ? line.getHeight() : 0;
-  var maxHeight = node.maxHeight || -1;
-
-  while (line && (maxHeight === -1 || currentHeight < maxHeight)) {
+  var remainHeight = node.maxHeight;
+  var line = this.buildNextLine(node);
+  while (line) {
+    var lineHeight = line.getHeight();
+    if (remainHeight) {
+      if (remainHeight <= 0) break;
+      if (remainHeight < lineHeight ) {
+        // clip to remainHeight
+        line.clipHeight = remainHeight;
+      }
+      remainHeight -= lineHeight;
+    }
     var positions = this.writer.addLine(line);
     node.positions.push(positions);
     line = this.buildNextLine(node);
-    if (line) {
-      currentHeight += line.getHeight();
-    }
 	}
 };
 

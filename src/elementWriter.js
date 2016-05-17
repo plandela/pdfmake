@@ -45,7 +45,7 @@ ElementWriter.prototype.addLine = function (line, dontUpdateContextPosition, ind
 	}, index);
 	this.tracker.emit('lineAdded', line);
 
-	if (!dontUpdateContextPosition) context.moveDown(height);
+	if (!dontUpdateContextPosition) context.moveDown(line.clipHeight || height);
 
 	return position;
 };

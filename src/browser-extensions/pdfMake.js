@@ -32,14 +32,12 @@ Document.prototype._createDoc = function (options, callback) {
 	printer.fs.bindFS(this.vfs);
 
 	var doc = printer.createPdfKitDocument(this.docDefinition, options);
-	var chunks = [];
 	var result;
 
-	doc.on('data', function (chunk) {
-		chunks.push(chunk);
+	doc.on('readable', function () {
+		result = doc.read() || [];
 	});
 	doc.on('end', function () {
-		result = Buffer.concat(chunks);
 		callback(result, doc._pdfMakePages);
 	});
 	doc.end();

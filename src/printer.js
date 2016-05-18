@@ -227,18 +227,24 @@ function renderPages(pages, fontProvider, pdfKitDoc) {
 
 		var page = pages[i];
     for(var ii = 0, il = page.items.length; ii < il; ii++) {
-        var item = page.items[ii];
-        switch(item.type) {
-          case 'vector':
-              renderVector(item.item, pdfKitDoc);
-              break;
-          case 'line':
-              renderLine(item.item, item.item.x, item.item.y, pdfKitDoc);
-              break;
-          case 'image':
-              renderImage(item.item, item.item.x, item.item.y, pdfKitDoc);
-              break;
-				}
+      var item = page.items[ii];
+      switch(item.type) {
+        case 'vector':
+          renderVector(item.item, pdfKitDoc);
+          break;
+        case 'line':
+          renderLine(item.item, item.item.x, item.item.y, pdfKitDoc);
+          break;
+        case 'image':
+          renderImage(item.item, item.item.x, item.item.y, pdfKitDoc);
+          break;
+        case 'beginClip':
+          beginClip(item.item, pdfKitDoc);
+          break;
+        case 'endClip':
+          endClip(pdfKitDoc);
+          break
+      }
     }
     if(page.watermark){
       renderWatermark(page, pdfKitDoc);
@@ -246,6 +252,16 @@ function renderPages(pages, fontProvider, pdfKitDoc) {
 
     fontProvider.setFontRefsToPdfDoc();
   }
+}
+
+function beginClip(rect, pdfKitDoc) {
+  pdfKitDoc.save();
+  pdfKitDoc.addContent('' + rect.x + ' ' + rect.y + ' ' + rect.width + ' ' + rect.height + ' re');
+  pdfKitDoc.clip();
+}
+
+function endClip(pdfKitDoc) {
+  pdfKitDoc.restore();
 }
 
 function renderLine(line, x, y, pdfKitDoc) {

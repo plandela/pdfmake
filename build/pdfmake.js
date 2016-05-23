@@ -357,7 +357,6 @@
 	  }
 
 		var pages = builder.layoutDocument(docDefinition.content, this.fontProvider, docDefinition.styles || {}, docDefinition.defaultStyle || { fontSize: 12, font: 'Roboto' }, docDefinition.background, docDefinition.header, docDefinition.footer, docDefinition.images, docDefinition.watermark, docDefinition.pageBreakBefore);
-
 		renderPages(pages, this.fontProvider, this.pdfKitDoc);
 
 		if(options.autoPrint){
@@ -480,7 +479,13 @@
 	          break;
 	        case 'endClip':
 	          endClip(pdfKitDoc);
-	          break
+	          break;
+	        case 'beginVerticalAlign':
+	          beginVerticalAlign(item.item, pdfKitDoc);
+	          break;
+	        case 'endVerticalAlign':
+	          endVerticalAlign(item.item, pdfKitDoc);
+	          break;
 	      }
 	    }
 	    if(page.watermark){
@@ -499,6 +504,28 @@
 
 	function endClip(pdfKitDoc) {
 	  pdfKitDoc.restore();
+	}
+
+	function beginVerticalAlign(item, pdfKitDoc) {
+	  switch(item.verticalAlign) {
+	    case 'center':
+	      pdfKitDoc.save();
+	      pdfKitDoc.translate(0, -(item.nodeHeight - item.viewHeight) / 2);
+	      break;
+	    case 'bottom':
+	      pdfKitDoc.save();
+	      pdfKitDoc.translate(0, -(item.nodeHeight - item.viewHeight));
+	      break;
+	  }
+	}
+
+	function endVerticalAlign(item, pdfKitDoc) {
+	  switch(item.verticalAlign) {
+	    case 'center':
+	    case 'bottom':
+	      pdfKitDoc.restore();
+	      break;
+	  }
 	}
 
 	function renderLine(line, x, y, pdfKitDoc) {
@@ -13251,6 +13278,7 @@
 		this.tracker = new TraversalTracker();
 	    this.imageMeasure = imageMeasure;
 	    this.tableLayouts = {};
+	  this.verticalAlignItemStack = [];
 	}
 
 	LayoutBuilder.prototype.registerTableLayouts = function (tableLayouts) {
@@ -13354,6 +13382,7 @@
 
 	  this.addBackground(background);
 	  this.processNode(docStructure);
+
 	  this.addHeadersAndFooters(header, footer);
 	  /* jshint eqnull:true */
 	  if(watermark != null)
@@ -13433,11 +13462,11 @@
 	  if (typeof watermark === 'string') {
 	    watermark = {'text': watermark};
 	  }
-	  
+
 	  if (!watermark.text) { // empty watermark text
 	    return;
 	  }
-	  
+
 	  watermark.font = watermark.font || defaultStyle.font || 'Roboto';
 	  watermark.color = watermark.color || 'black';
 	  watermark.opacity = watermark.opacity || 0.6;
@@ -13526,7 +13555,12 @@
 	  this.linearNodeList.push(node);
 	  decorateNode(node);
 
+	  var prevTop = self.writer.context().getCurrentPosition().top;
 	  applyMargins(function() {
+	    if (node.verticalAlign) {
+	      var verticalAlignBegin = self.writer.beginVerticalAlign(node.verticalAlign);
+	    }
+
 	    var absPosition = node.absolutePosition;
 	    if(absPosition){
 	      self.writer.context().beginDetachedBlock();
@@ -13558,7 +13592,13 @@
 	    if(absPosition){
 	      self.writer.context().endDetachedBlock();
 	    }
+
+	    if (node.verticalAlign) {
+	      self.verticalAlignItemStack.push({ begin: verticalAlignBegin, end: self.writer.endVerticalAlign(node.verticalAlign) });
+	    }
 		});
+	  // TODO: ugly; does not work (at least) when page break in node
+	  node._height = self.writer.context().getCurrentPosition().top - prevTop;
 
 		function applyMargins(callback) {
 			var margin = node._margin;
@@ -13632,10 +13672,13 @@
 
 	    self.writer.context().beginColumnGroup();
 
+	    var verticalAlignCols = {};
+
 	    for(var i = 0, l = columns.length; i < l; i++) {
 	      var column = columns[i];
 	      var width = widths[i]._calcWidth;
 	      var leftOffset = colLeftOffset(i);
+	      var colI = i;
 
 	      if (column.colSpan && column.colSpan > 1) {
 	          for(var j = 1; j < column.colSpan; j++) {
@@ -13646,12 +13689,18 @@
 	      self.writer.context().beginColumn(width, leftOffset, getEndingCell(column, i));
 	      if (!column._span) {
 	        if (height) {
-	          self.writer.beginClip(width, height);
+	          var lastClipItem = self.writer.beginClip(width, height);
 	        }
 	        self.processNode(column);
+	        verticalAlignCols[colI] = self.verticalAlignItemStack.length - 1;
 	        addAll(positions, column.positions);
 	        if (height) {
-	          self.writer.endClip();
+	          if (column._height > height) {
+	            self.writer.endClip();
+	          } else {
+	            // optimize by removing unnecessary clipping; this is ugly
+	            lastClipItem.type = '';
+	          }
 	        }
 	      } else if (column._columnEndingContext) {
 	        // row-span ending
@@ -13660,6 +13709,16 @@
 	    }
 
 	    self.writer.context().completeColumnGroup(height);
+
+	    var rowHeight = self.writer.context().height;
+	    for(var i = 0, l = columns.length; i < l; i++) {
+	      var column = columns[i];
+	      if (!column._span && column.verticalAlign) {
+	        var item = self.verticalAlignItemStack[verticalAlignCols[i]].begin.item;
+	        item.viewHeight = rowHeight;
+	        item.nodeHeight = column._height;
+	      }
+	    }
 	  });
 
 	  return {pageBreaks: pageBreaks, positions: positions};
@@ -15906,10 +15965,18 @@
 
 		this.endingCell = null;
 		this.x = saved.x;
-		this.y = height && (saved.y + height) || saved.bottomMost.y;
-		this.page = saved.bottomMost.page;
+		if (height) {
+			this.y = saved.y + height;
+			this.page = saved.page;
+			this.height = height;
+			this.availableHeight = saved.availableHeight - height;
+		} else {
+			this.y = saved.bottomMost.y;
+			this.page = saved.bottomMost.page;
+			this.height = saved.bottomMost.y - saved.y;
+			this.availableHeight = saved.bottomMost.availableHeight;
+		}
 		this.availableWidth = saved.availableWidth;
-		this.availableHeight = saved.bottomMost.availableHeight;
 		this.lastColumnWidth = saved.lastColumnWidth;
 	};
 
@@ -16143,6 +16210,14 @@
 
 	PageElementWriter.prototype.endClip = function() {
 		return this.writer.endClip();
+	};
+
+	PageElementWriter.prototype.beginVerticalAlign = function(verticalAlign) {
+		return this.writer.beginVerticalAlign(verticalAlign);
+	};
+
+	PageElementWriter.prototype.endVerticalAlign = function(verticalAlign) {
+		return this.writer.endVerticalAlign(verticalAlign);
 	};
 
 	PageElementWriter.prototype.addVector = function(vector, ignoreContextX, ignoreContextY, index) {
@@ -16467,14 +16542,16 @@
 					break;
 
 				case 'image':
-					var img = pack(item.item);
-
-					img.x = (img.x || 0) + (useBlockXOffset ? (block.xOffset || 0) : ctx.x);
-					img.y = (img.y || 0) + (useBlockYOffset ? (block.yOffset || 0) : ctx.y);
-
+				case 'beginVerticalAlign':
+				case 'endVerticalAlign':
+				case 'beginClip':
+				case 'endClip':
+					var it = pack(item.item);
+					it.x = (it.x || 0) + (useBlockXOffset ? (block.xOffset || 0) : ctx.x);
+					it.y = (it.y || 0) + (useBlockYOffset ? (block.yOffset || 0) : ctx.y);
 					page.items.push({
-						type: 'image',
-						item: img
+						type: item.type,
+						item: it
 					});
 					break;
 			}
@@ -16488,20 +16565,44 @@
 	ElementWriter.prototype.beginClip = function (width, height) {
 		var ctx = this.context;
 		var page = ctx.getCurrentPage();
-		page.items.push({
+		var item = {
 			type: 'beginClip',
 			item: { x: ctx.x, y: ctx.y, width: width, height: height }
-		});
-		return true;
+		};
+		page.items.push(item);
+		return item;
 	};
 
 	ElementWriter.prototype.endClip = function () {
 		var ctx = this.context;
 		var page = ctx.getCurrentPage();
-		page.items.push({
+		var item = {
 			type: 'endClip'
-		});
-		return true;
+		};
+		page.items.push(item);
+		return item;
+	};
+
+	ElementWriter.prototype.beginVerticalAlign = function (verticalAlign) {
+		var ctx = this.context;
+		var page = ctx.getCurrentPage();
+		var item = {
+			type: 'beginVerticalAlign',
+			item: { verticalAlign: verticalAlign }
+		};
+		page.items.push(item);
+		return item;
+	};
+
+	ElementWriter.prototype.endVerticalAlign = function (verticalAlign) {
+		var ctx = this.context;
+		var page = ctx.getCurrentPage();
+		var item = {
+			type: 'endVerticalAlign',
+			item: { verticalAlign: verticalAlign }
+		};
+		page.items.push(item);
+		return item;
 	};
 
 	/**

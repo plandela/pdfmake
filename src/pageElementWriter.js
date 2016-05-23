@@ -54,6 +54,14 @@ PageElementWriter.prototype.endClip = function() {
 	return this.writer.endClip();
 };
 
+PageElementWriter.prototype.beginVerticalAlign = function(verticalAlign) {
+	return this.writer.beginVerticalAlign(verticalAlign);
+};
+
+PageElementWriter.prototype.endVerticalAlign = function(verticalAlign) {
+	return this.writer.endVerticalAlign(verticalAlign);
+};
+
 PageElementWriter.prototype.addVector = function(vector, ignoreContextX, ignoreContextY, index) {
 	return this.writer.addVector(vector, ignoreContextX, ignoreContextY, index);
 };

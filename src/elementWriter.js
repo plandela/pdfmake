@@ -210,14 +210,16 @@ ElementWriter.prototype.addFragment = function (block, useBlockXOffset, useBlock
 				break;
 
 			case 'image':
-				var img = pack(item.item);
-
-				img.x = (img.x || 0) + (useBlockXOffset ? (block.xOffset || 0) : ctx.x);
-				img.y = (img.y || 0) + (useBlockYOffset ? (block.yOffset || 0) : ctx.y);
-
+			case 'beginVerticalAlign':
+			case 'endVerticalAlign':
+			case 'beginClip':
+			case 'endClip':
+				var it = pack(item.item);
+				it.x = (it.x || 0) + (useBlockXOffset ? (block.xOffset || 0) : ctx.x);
+				it.y = (it.y || 0) + (useBlockYOffset ? (block.yOffset || 0) : ctx.y);
 				page.items.push({
-					type: 'image',
-					item: img
+					type: item.type,
+					item: it
 				});
 				break;
 		}
@@ -231,20 +233,44 @@ ElementWriter.prototype.addFragment = function (block, useBlockXOffset, useBlock
 ElementWriter.prototype.beginClip = function (width, height) {
 	var ctx = this.context;
 	var page = ctx.getCurrentPage();
-	page.items.push({
+	var item = {
 		type: 'beginClip',
 		item: { x: ctx.x, y: ctx.y, width: width, height: height }
-	});
-	return true;
+	};
+	page.items.push(item);
+	return item;
 };
 
 ElementWriter.prototype.endClip = function () {
 	var ctx = this.context;
 	var page = ctx.getCurrentPage();
-	page.items.push({
+	var item = {
 		type: 'endClip'
-	});
-	return true;
+	};
+	page.items.push(item);
+	return item;
+};
+
+ElementWriter.prototype.beginVerticalAlign = function (verticalAlign) {
+	var ctx = this.context;
+	var page = ctx.getCurrentPage();
+	var item = {
+		type: 'beginVerticalAlign',
+		item: { verticalAlign: verticalAlign }
+	};
+	page.items.push(item);
+	return item;
+};
+
+ElementWriter.prototype.endVerticalAlign = function (verticalAlign) {
+	var ctx = this.context;
+	var page = ctx.getCurrentPage();
+	var item = {
+		type: 'endVerticalAlign',
+		item: { verticalAlign: verticalAlign }
+	};
+	page.items.push(item);
+	return item;
 };
 
 /**

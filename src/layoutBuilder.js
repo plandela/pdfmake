@@ -35,6 +35,7 @@ function LayoutBuilder(pageSize, pageMargins, imageMeasure) {
 	this.tracker = new TraversalTracker();
     this.imageMeasure = imageMeasure;
     this.tableLayouts = {};
+  this.verticalAlignItemStack = [];
 }
 
 LayoutBuilder.prototype.registerTableLayouts = function (tableLayouts) {
@@ -138,6 +139,7 @@ LayoutBuilder.prototype.tryLayoutDocument = function (docStructure, fontProvider
 
   this.addBackground(background);
   this.processNode(docStructure);
+
   this.addHeadersAndFooters(header, footer);
   /* jshint eqnull:true */
   if(watermark != null)
@@ -217,11 +219,11 @@ LayoutBuilder.prototype.addWatermark = function(watermark, fontProvider, default
   if (typeof watermark === 'string') {
     watermark = {'text': watermark};
   }
-  
+
   if (!watermark.text) { // empty watermark text
     return;
   }
-  
+
   watermark.font = watermark.font || defaultStyle.font || 'Roboto';
   watermark.color = watermark.color || 'black';
   watermark.opacity = watermark.opacity || 0.6;
@@ -310,7 +312,12 @@ LayoutBuilder.prototype.processNode = function(node) {
   this.linearNodeList.push(node);
   decorateNode(node);
 
+  var prevTop = self.writer.context().getCurrentPosition().top;
   applyMargins(function() {
+    if (node.verticalAlign) {
+      var verticalAlignBegin = self.writer.beginVerticalAlign(node.verticalAlign);
+    }
+
     var absPosition = node.absolutePosition;
     if(absPosition){
       self.writer.context().beginDetachedBlock();
@@ -342,7 +349,13 @@ LayoutBuilder.prototype.processNode = function(node) {
     if(absPosition){
       self.writer.context().endDetachedBlock();
     }
+
+    if (node.verticalAlign) {
+      self.verticalAlignItemStack.push({ begin: verticalAlignBegin, end: self.writer.endVerticalAlign(node.verticalAlign) });
+    }
 	});
+  // TODO: ugly; does not work (at least) when page break in node
+  node._height = self.writer.context().getCurrentPosition().top - prevTop;
 
 	function applyMargins(callback) {
 		var margin = node._margin;
@@ -416,10 +429,13 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
 
     self.writer.context().beginColumnGroup();
 
+    var verticalAlignCols = {};
+
     for(var i = 0, l = columns.length; i < l; i++) {
       var column = columns[i];
       var width = widths[i]._calcWidth;
       var leftOffset = colLeftOffset(i);
+      var colI = i;
 
       if (column.colSpan && column.colSpan > 1) {
           for(var j = 1; j < column.colSpan; j++) {
@@ -430,12 +446,18 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
       self.writer.context().beginColumn(width, leftOffset, getEndingCell(column, i));
       if (!column._span) {
         if (height) {
-          self.writer.beginClip(width, height);
+          var lastClipItem = self.writer.beginClip(width, height);
         }
         self.processNode(column);
+        verticalAlignCols[colI] = self.verticalAlignItemStack.length - 1;
         addAll(positions, column.positions);
         if (height) {
-          self.writer.endClip();
+          if (column._height > height) {
+            self.writer.endClip();
+          } else {
+            // optimize by removing unnecessary clipping; this is ugly
+            lastClipItem.type = '';
+          }
         }
       } else if (column._columnEndingContext) {
         // row-span ending
@@ -444,6 +466,16 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
     }
 
     self.writer.context().completeColumnGroup(height);
+
+    var rowHeight = self.writer.context().height;
+    for(var i = 0, l = columns.length; i < l; i++) {
+      var column = columns[i];
+      if (!column._span && column.verticalAlign) {
+        var item = self.verticalAlignItemStack[verticalAlignCols[i]].begin.item;
+        item.viewHeight = rowHeight;
+        item.nodeHeight = column._height;
+      }
+    }
   });
 
   return {pageBreaks: pageBreaks, positions: positions};

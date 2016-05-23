@@ -92,10 +92,18 @@ DocumentContext.prototype.completeColumnGroup = function(height) {
 
 	this.endingCell = null;
 	this.x = saved.x;
-	this.y = height && (saved.y + height) || saved.bottomMost.y;
-	this.page = saved.bottomMost.page;
+	if (height) {
+		this.y = saved.y + height;
+		this.page = saved.page;
+		this.height = height;
+		this.availableHeight = saved.availableHeight - height;
+	} else {
+		this.y = saved.bottomMost.y;
+		this.page = saved.bottomMost.page;
+		this.height = saved.bottomMost.y - saved.y;
+		this.availableHeight = saved.bottomMost.availableHeight;
+	}
 	this.availableWidth = saved.availableWidth;
-	this.availableHeight = saved.bottomMost.availableHeight;
 	this.lastColumnWidth = saved.lastColumnWidth;
 };
 

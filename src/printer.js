@@ -73,10 +73,10 @@ function PdfPrinter(fontDescriptors) {
  *	}
  * }
  *
- * var pdfDoc = printer.createPdfKitDocument(docDefinition);
+ * var pdfKitDoc = printer.createPdfKitDocument(docDefinition);
  *
- * pdfDoc.pipe(fs.createWriteStream('sample.pdf'));
- * pdfDoc.end();
+ * pdfKitDoc.pipe(fs.createWriteStream('sample.pdf'));
+ * pdfKitDoc.end();
  *
  * @return {Object} a pdfKit document object which can be saved or encode to data-url
  */
@@ -131,6 +131,7 @@ PdfPrinter.prototype.createPdfKitDocument = function(docDefinition, options) {
     this.pdfKitDoc._root.data.OpenAction = printActionRef;
     printActionRef.end();
 	}
+
 	return this.pdfKitDoc;
 };
 
@@ -352,10 +353,10 @@ function renderLine(line, x, y, pdfKitDoc) {
 function renderWatermark(page, pdfKitDoc){
 	var watermark = page.watermark;
 
+  pdfKitDoc.save();
 	pdfKitDoc.fill(watermark.color);
 	pdfKitDoc.opacity(watermark.opacity);
 
-	pdfKitDoc.save();
 	pdfKitDoc.transform(1, 0, 0, -1, 0, pdfKitDoc.page.height);
 
 	var angle = Math.atan2(pdfKitDoc.page.height, pdfKitDoc.page.width) * 180/Math.PI;
@@ -370,41 +371,42 @@ function renderWatermark(page, pdfKitDoc){
 	pdfKitDoc.restore();
 }
 
-function renderVector(vector, pdfDoc) {
+function renderVector(vector, pdfKitDoc) {
 	//TODO: pdf optimization (there's no need to write all properties everytime)
-	pdfDoc.lineWidth(vector.lineWidth || 1);
+  pdfKitDoc.save();
+	pdfKitDoc.lineWidth(vector.lineWidth || 1);
 	if (vector.dash) {
-    pdfDoc.dash(vector.dash.length, { space: vector.dash.space || vector.dash.length, phase: vector.dash.phase || 0 });
+    pdfKitDoc.dash(vector.dash.length, { space: vector.dash.space || vector.dash.length, phase: vector.dash.phase || 0 });
 	} else {
-		pdfDoc.undash();
+		pdfKitDoc.undash();
 	}
-	pdfDoc.fillOpacity(vector.fillOpacity || 1);
-	pdfDoc.strokeOpacity(vector.strokeOpacity || 1);
-	pdfDoc.lineJoin(vector.lineJoin || 'miter');
+	pdfKitDoc.fillOpacity(vector.fillOpacity || 1);
+	pdfKitDoc.strokeOpacity(vector.strokeOpacity || 1);
+	pdfKitDoc.lineJoin(vector.lineJoin || 'miter');
 
 	//TODO: clipping
 
 	switch(vector.type) {
 		case 'ellipse':
-			pdfDoc.ellipse(vector.x, vector.y, vector.r1, vector.r2);
+			pdfKitDoc.ellipse(vector.x, vector.y, vector.r1, vector.r2);
 			break;
 		case 'rect':
 			if (vector.r) {
-				pdfDoc.roundedRect(vector.x, vector.y, vector.w, vector.h, vector.r);
+				pdfKitDoc.roundedRect(vector.x, vector.y, vector.w, vector.h, vector.r);
 			} else {
-				pdfDoc.rect(vector.x, vector.y, vector.w, vector.h);
+				pdfKitDoc.rect(vector.x, vector.y, vector.w, vector.h);
 			}
 			break;
 		case 'line':
-			pdfDoc.moveTo(vector.x1, vector.y1);
-			pdfDoc.lineTo(vector.x2, vector.y2);
+			pdfKitDoc.moveTo(vector.x1, vector.y1);
+			pdfKitDoc.lineTo(vector.x2, vector.y2);
 			break;
 		case 'polyline':
 			if (vector.points.length === 0) break;
 
-			pdfDoc.moveTo(vector.points[0].x, vector.points[0].y);
+			pdfKitDoc.moveTo(vector.points[0].x, vector.points[0].y);
 			for(var i = 1, l = vector.points.length; i < l; i++) {
-				pdfDoc.lineTo(vector.points[i].x, vector.points[i].y);
+				pdfKitDoc.lineTo(vector.points[i].x, vector.points[i].y);
 			}
 
 			if (vector.points.length > 1) {
@@ -412,24 +414,43 @@ function renderVector(vector, pdfDoc) {
 				var pn = vector.points[vector.points.length - 1];
 
 				if (vector.closePath || p1.x === pn.x && p1.y === pn.y) {
-					pdfDoc.closePath();
+					pdfKitDoc.closePath();
 				}
 			}
 			break;
 	}
 
 	if (vector.color && vector.lineColor) {
-		pdfDoc.fillAndStroke(vector.color, vector.lineColor);
+		pdfKitDoc.fillAndStroke(vector.color, vector.lineColor);
+  } else if (vector.pattern && vector.lineColor) {
+    registerPatterns(pdfKitDoc);
+    pdfKitDoc.fillAndStroke([pdfKitDoc.patterns[vector.pattern[0]], vector.pattern[1]], vector.lineColor);
 	} else if (vector.color) {
-		pdfDoc.fill(vector.color);
+    pdfKitDoc.fill(vector.color);
+  } else if (vector.pattern) {
+    registerPatterns(pdfKitDoc);
+    pdfKitDoc.fill([pdfKitDoc.patterns[vector.pattern[0]], vector.pattern[1]]);
 	} else {
-		pdfDoc.stroke(vector.lineColor || 'black');
+		pdfKitDoc.stroke(vector.lineColor || 'black');
 	}
+  pdfKitDoc.restore();
 }
 
 function renderImage(image, x, y, pdfKitDoc) {
     pdfKitDoc.image(image.image, image.x, image.y, { width: image._width, height: image._height });
 }
+
+function registerPatterns(pdfKitDoc) {
+  if (pdfKitDoc.patterns)
+    return;
+  pdfKitDoc.patterns = {
+    stripe45d: pdfKitDoc.pattern([1, 1, 4, 4], 3, 3, '1 w 0 1 m 4 5 l s 2 0 m 5 3 l s'),
+    stripe45dWide: pdfKitDoc.pattern([1, 1, 7, 7], 6, 6, '1 w 0 1 m 7 8 l s 5 0 m 8 3 l s'),
+    stripe45u: pdfKitDoc.pattern([1, 1, 4, 4], 3, 3, '1 w 0 4 m 4 0 l s 2 5 m 5 2 l s'),
+    stripe45uWide: pdfKitDoc.pattern([1, 1, 7, 7], 6, 6, '1 w 0 7 m 7 0 l s 5 8 m 8 5 l s')
+  }
+}
+
 
 module.exports = PdfPrinter;
 

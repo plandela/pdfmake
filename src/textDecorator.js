@@ -132,6 +132,7 @@ function drawDecorations(line, x, y, pdfKitDoc) {
 
 function drawBackground(line, x, y, pdfKitDoc) {
 	var height = line.getHeight();
+	pdfKitDoc.save();
 	for(var i = 0, l = line.inlines.length; i < l; i++) {
 		var inline = line.inlines[i];
 			if(inline.background) {
@@ -140,6 +141,7 @@ function drawBackground(line, x, y, pdfKitDoc) {
 							.fill();
 			}
 	}
+	pdfKitDoc.restore();
 }
 
 module.exports = {

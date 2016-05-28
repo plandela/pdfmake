@@ -57,7 +57,7 @@
 	'use strict';
 
 	var PdfPrinter = __webpack_require__(2);
-	var FileSaver = __webpack_require__(104);
+	var FileSaver = __webpack_require__(106);
 	var saveAs = FileSaver.saveAs;
 
 	var defaultClientFonts = {
@@ -244,9 +244,9 @@
 	var LayoutBuilder = __webpack_require__(7);
 	var PdfKit = __webpack_require__(20);
 	var PDFReference = __webpack_require__(45);
-	var sizes = __webpack_require__(101);
-	var ImageMeasure = __webpack_require__(102);
-	var textDecorator = __webpack_require__(103);
+	var sizes = __webpack_require__(103);
+	var ImageMeasure = __webpack_require__(104);
+	var textDecorator = __webpack_require__(105);
 	var FontProvider = __webpack_require__(5);
 
 	_.noConflict();
@@ -310,10 +310,10 @@
 	 *	}
 	 * }
 	 *
-	 * var pdfDoc = printer.createPdfKitDocument(docDefinition);
+	 * var pdfKitDoc = printer.createPdfKitDocument(docDefinition);
 	 *
-	 * pdfDoc.pipe(fs.createWriteStream('sample.pdf'));
-	 * pdfDoc.end();
+	 * pdfKitDoc.pipe(fs.createWriteStream('sample.pdf'));
+	 * pdfKitDoc.end();
 	 *
 	 * @return {Object} a pdfKit document object which can be saved or encode to data-url
 	 */
@@ -368,6 +368,7 @@
 	    this.pdfKitDoc._root.data.OpenAction = printActionRef;
 	    printActionRef.end();
 		}
+
 		return this.pdfKitDoc;
 	};
 
@@ -589,10 +590,10 @@
 	function renderWatermark(page, pdfKitDoc){
 		var watermark = page.watermark;
 
+	  pdfKitDoc.save();
 		pdfKitDoc.fill(watermark.color);
 		pdfKitDoc.opacity(watermark.opacity);
 
-		pdfKitDoc.save();
 		pdfKitDoc.transform(1, 0, 0, -1, 0, pdfKitDoc.page.height);
 
 		var angle = Math.atan2(pdfKitDoc.page.height, pdfKitDoc.page.width) * 180/Math.PI;
@@ -607,41 +608,42 @@
 		pdfKitDoc.restore();
 	}
 
-	function renderVector(vector, pdfDoc) {
+	function renderVector(vector, pdfKitDoc) {
 		//TODO: pdf optimization (there's no need to write all properties everytime)
-		pdfDoc.lineWidth(vector.lineWidth || 1);
+	  pdfKitDoc.save();
+		pdfKitDoc.lineWidth(vector.lineWidth || 1);
 		if (vector.dash) {
-	    pdfDoc.dash(vector.dash.length, { space: vector.dash.space || vector.dash.length, phase: vector.dash.phase || 0 });
+	    pdfKitDoc.dash(vector.dash.length, { space: vector.dash.space || vector.dash.length, phase: vector.dash.phase || 0 });
 		} else {
-			pdfDoc.undash();
+			pdfKitDoc.undash();
 		}
-		pdfDoc.fillOpacity(vector.fillOpacity || 1);
-		pdfDoc.strokeOpacity(vector.strokeOpacity || 1);
-		pdfDoc.lineJoin(vector.lineJoin || 'miter');
+		pdfKitDoc.fillOpacity(vector.fillOpacity || 1);
+		pdfKitDoc.strokeOpacity(vector.strokeOpacity || 1);
+		pdfKitDoc.lineJoin(vector.lineJoin || 'miter');
 
 		//TODO: clipping
 
 		switch(vector.type) {
 			case 'ellipse':
-				pdfDoc.ellipse(vector.x, vector.y, vector.r1, vector.r2);
+				pdfKitDoc.ellipse(vector.x, vector.y, vector.r1, vector.r2);
 				break;
 			case 'rect':
 				if (vector.r) {
-					pdfDoc.roundedRect(vector.x, vector.y, vector.w, vector.h, vector.r);
+					pdfKitDoc.roundedRect(vector.x, vector.y, vector.w, vector.h, vector.r);
 				} else {
-					pdfDoc.rect(vector.x, vector.y, vector.w, vector.h);
+					pdfKitDoc.rect(vector.x, vector.y, vector.w, vector.h);
 				}
 				break;
 			case 'line':
-				pdfDoc.moveTo(vector.x1, vector.y1);
-				pdfDoc.lineTo(vector.x2, vector.y2);
+				pdfKitDoc.moveTo(vector.x1, vector.y1);
+				pdfKitDoc.lineTo(vector.x2, vector.y2);
 				break;
 			case 'polyline':
 				if (vector.points.length === 0) break;
 
-				pdfDoc.moveTo(vector.points[0].x, vector.points[0].y);
+				pdfKitDoc.moveTo(vector.points[0].x, vector.points[0].y);
 				for(var i = 1, l = vector.points.length; i < l; i++) {
-					pdfDoc.lineTo(vector.points[i].x, vector.points[i].y);
+					pdfKitDoc.lineTo(vector.points[i].x, vector.points[i].y);
 				}
 
 				if (vector.points.length > 1) {
@@ -649,24 +651,43 @@
 					var pn = vector.points[vector.points.length - 1];
 
 					if (vector.closePath || p1.x === pn.x && p1.y === pn.y) {
-						pdfDoc.closePath();
+						pdfKitDoc.closePath();
 					}
 				}
 				break;
 		}
 
 		if (vector.color && vector.lineColor) {
-			pdfDoc.fillAndStroke(vector.color, vector.lineColor);
+			pdfKitDoc.fillAndStroke(vector.color, vector.lineColor);
+	  } else if (vector.pattern && vector.lineColor) {
+	    registerPatterns(pdfKitDoc);
+	    pdfKitDoc.fillAndStroke([pdfKitDoc.patterns[vector.pattern[0]], vector.pattern[1]], vector.lineColor);
 		} else if (vector.color) {
-			pdfDoc.fill(vector.color);
+	    pdfKitDoc.fill(vector.color);
+	  } else if (vector.pattern) {
+	    registerPatterns(pdfKitDoc);
+	    pdfKitDoc.fill([pdfKitDoc.patterns[vector.pattern[0]], vector.pattern[1]]);
 		} else {
-			pdfDoc.stroke(vector.lineColor || 'black');
+			pdfKitDoc.stroke(vector.lineColor || 'black');
 		}
+	  pdfKitDoc.restore();
 	}
 
 	function renderImage(image, x, y, pdfKitDoc) {
 	    pdfKitDoc.image(image.image, image.x, image.y, { width: image._width, height: image._height });
 	}
+
+	function registerPatterns(pdfKitDoc) {
+	  if (pdfKitDoc.patterns)
+	    return;
+	  pdfKitDoc.patterns = {
+	    stripe45d: pdfKitDoc.pattern([0, 0, 9, 9], 3, 3, '1 w 0 9 m 9 0 l s'),
+	    stripe45dWide: pdfKitDoc.pattern([0, 0, 9, 9], 6, 6, '1 w 0 9 m 9 0 l s'),
+	    stripe45u: pdfKitDoc.pattern([0, 0, 9, 9], 3, 3, '1 w 0 0 m 9 9 l s'),
+	    stripe45uWide: pdfKitDoc.pattern([0, 0, 9, 9], 6, 6, '1 w 0 0 m 9 9 l s')
+	  }
+	}
+
 
 	module.exports = PdfPrinter;
 
@@ -13691,6 +13712,8 @@
 	        if (height) {
 	          var lastClipItem = self.writer.beginClip(width, height);
 	        }
+	        var ctxX = self.writer.context().x;
+	        var ctxY = self.writer.context().y;
 	        self.processNode(column);
 	        verticalAlignCols[colI] = self.verticalAlignItemStack.length - 1;
 	        addAll(positions, column.positions);
@@ -13701,6 +13724,19 @@
 	            // optimize by removing unnecessary clipping; this is ugly
 	            lastClipItem.type = '';
 	          }
+	        }
+	        if (column.pattern) {
+	          self.writer.addVector({
+	            type: 'rect',
+	            x: ctxX,
+	            y: ctxY,
+	            w: width,
+	            h: height,
+	            lineWidth: 0,
+	            color: column.color,
+	            fillOpacity: column.fillOpacity,
+	            pattern: column.pattern
+	          }, true, true);
 	        }
 	      } else if (column._columnEndingContext) {
 	        // row-span ending
@@ -17209,15 +17245,15 @@
 
 	    mixin(__webpack_require__(64));
 
-	    mixin(__webpack_require__(66));
+	    mixin(__webpack_require__(67));
 
-	    mixin(__webpack_require__(68));
+	    mixin(__webpack_require__(69));
 
-	    mixin(__webpack_require__(88));
+	    mixin(__webpack_require__(89));
 
-	    mixin(__webpack_require__(95));
+	    mixin(__webpack_require__(97));
 
-	    mixin(__webpack_require__(100));
+	    mixin(__webpack_require__(102));
 
 	    PDFDocument.prototype.addPage = function(options) {
 	      var pages;
@@ -22057,7 +22093,7 @@
 	      } else if (object instanceof PDFReference) {
 	        return object.toString();
 	      } else if (object instanceof Date) {
-	        return '(D:' + pad(object.getUTCFullYear(), 4) + pad(object.getUTCMonth(), 2) + pad(object.getUTCDate(), 2) + pad(object.getUTCHours(), 2) + pad(object.getUTCMinutes(), 2) + pad(object.getUTCSeconds(), 2) + 'Z)';
+	        return '(D:' + pad(object.getUTCFullYear(), 4) + pad(object.getUTCMonth() + 1, 2) + pad(object.getUTCDate(), 2) + pad(object.getUTCHours(), 2) + pad(object.getUTCMinutes(), 2) + pad(object.getUTCSeconds(), 2) + 'Z)';
 	      } else if (Array.isArray(object)) {
 	        items = ((function() {
 	          var k, len, results;
@@ -29777,6 +29813,14 @@
 	            };
 	          })(this)
 	        },
+	        color_spaces: {
+	          get: (function(_this) {
+	            return function() {
+	              var base;
+	              return (base = _this.resources.data).ColorSpace != null ? base.ColorSpace : base.ColorSpace = {};
+	            };
+	          })(this)
+	        },
 	        annotations: {
 	          get: (function(_this) {
 	            return function() {
@@ -29884,19 +29928,54 @@
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
-	  var PDFGradient, PDFLinearGradient, PDFRadialGradient, namedColors, ref;
+	  var PDFGradient, PDFLinearGradient, PDFPattern, PDFRadialGradient, namedColors, ref;
 
 	  ref = __webpack_require__(65), PDFGradient = ref.PDFGradient, PDFLinearGradient = ref.PDFLinearGradient, PDFRadialGradient = ref.PDFRadialGradient;
+
+	  PDFPattern = __webpack_require__(66).PDFPattern;
 
 	  module.exports = {
 	    initColor: function() {
 	      this._opacityRegistry = {};
 	      this._opacityCount = 0;
-	      return this._gradCount = 0;
+	      this._gradCount = 0;
+	      this._patternCount = 0;
+	      this._colorSpaceCount = 0;
+	      this._patternColorSpacesEmbeded = false;
+	      return this._patternColorSpaceIds = {};
+	    },
+	    _isPatternColor: function(color) {
+	      return color instanceof PDFGradient || color instanceof PDFPattern;
+	    },
+	    _embedPatternColorSpaces: function() {
+	      var _patternColorSpacesEmbeded, cs, csId, csName, i, len, ref1, results;
+	      if (this._patternColorSpacesEmbeded) {
+	        return;
+	      }
+	      _patternColorSpacesEmbeded = true;
+	      ref1 = ['DeviceCMYK', 'DeviceRGB'];
+	      results = [];
+	      for (i = 0, len = ref1.length; i < len; i++) {
+	        csName = ref1[i];
+	        cs = this.ref(['Pattern', csName]);
+	        csId = this._getPatternColorSpaceId(csName);
+	        this.page.color_spaces[csId] = cs;
+	        results.push(cs.end());
+	      }
+	      return results;
+	    },
+	    _getPatternColorSpaceId: function(csName) {
+	      return "CsP" + csName;
+	    },
+	    _getPatternColorSpace: function(color) {
+	      if (this._isPatternColor(color)) {
+	        throw new Error("pattern color space is only valid for non-pattern colors");
+	      }
+	      return this._getPatternColorSpaceId(this._getColorSpace(color));
 	    },
 	    _normalizeColor: function(color) {
 	      var hex, part;
-	      if (color instanceof PDFGradient) {
+	      if (this._isPatternColor(color)) {
 	        return color;
 	      }
 	      if (typeof color === 'string') {
@@ -29937,7 +30016,14 @@
 	      return null;
 	    },
 	    _setColor: function(color, stroke) {
-	      var gstate, name, op, space;
+	      var gstate, name, op, patternColor, space;
+	      if (Array.isArray(color)) {
+	        if (color.length !== 2) {
+	          throw new Error("uncollored patterns must be given as arrays [pattern, color]");
+	        }
+	        patternColor = color[1];
+	        color = color[0];
+	      }
 	      color = this._normalizeColor(color);
 	      if (!color) {
 	        return false;
@@ -29953,14 +30039,13 @@
 	        this.addContent("/" + name + " gs");
 	        this._sMasked = false;
 	      }
-	      op = stroke ? 'SCN' : 'scn';
-	      if (color instanceof PDFGradient) {
-	        this._setColorSpace('Pattern', stroke);
-	        color.apply(op);
+	      if (this._isPatternColor(color)) {
+	        color.apply(stroke, patternColor);
 	      } else {
-	        space = color.length === 4 ? 'DeviceCMYK' : 'DeviceRGB';
+	        space = this._getColorSpace(color);
 	        this._setColorSpace(space, stroke);
 	        color = color.join(' ');
+	        op = stroke ? 'SCN' : 'scn';
 	        this.addContent(color + " " + op);
 	      }
 	      return true;
@@ -29970,27 +30055,22 @@
 	      op = stroke ? 'CS' : 'cs';
 	      return this.addContent("/" + space + " " + op);
 	    },
-	    fillColor: function(color, opacity) {
+	    _getColorSpace: function(color) {
+	      if (color.length === 4) {
+	        return 'DeviceCMYK';
+	      } else {
+	        return 'DeviceRGB';
+	      }
+	    },
+	    fillColor: function(color) {
 	      var set;
-	      if (opacity == null) {
-	        opacity = 1;
-	      }
 	      set = this._setColor(color, false);
-	      if (set) {
-	        this.fillOpacity(opacity);
-	      }
-	      this._fillColor = [color, opacity];
+	      this._fillColor = [color];
 	      return this;
 	    },
-	    strokeColor: function(color, opacity) {
+	    strokeColor: function(color) {
 	      var set;
-	      if (opacity == null) {
-	        opacity = 1;
-	      }
 	      set = this._setColor(color, true);
-	      if (set) {
-	        this.strokeOpacity(opacity);
-	      }
 	      return this;
 	    },
 	    opacity: function(opacity) {
@@ -30043,6 +30123,12 @@
 	    },
 	    radialGradient: function(x1, y1, r1, x2, y2, r2) {
 	      return new PDFRadialGradient(this, x1, y1, r1, x2, y2, r2);
+	    },
+	    pattern: function(bbox, xstep, ystep, pattern, colored) {
+	      if (colored == null) {
+	        colored = false;
+	      }
+	      return new PDFPattern(this, bbox, xstep, ystep, pattern, colored);
 	    }
 	  };
 
@@ -30346,10 +30432,13 @@
 	      return pattern;
 	    };
 
-	    PDFGradient.prototype.apply = function(op) {
+	    PDFGradient.prototype.apply = function(stroke) {
+	      var op;
 	      if (!this.embedded) {
 	        this.embed();
 	      }
+	      this.doc._setColorSpace('Pattern', stroke);
+	      op = stroke ? 'SCN' : 'scn';
 	      this.doc.addContent("/" + this.id + " " + op);
 	      if (this.opacity_id) {
 	        this.doc.addContent("/Gs" + this.opacity_id + " gs");
@@ -30434,6 +30523,103 @@
 
 /***/ },
 /* 66 */
+/***/ function(module, exports) {
+
+	// Generated by CoffeeScript 1.10.0
+	(function() {
+	  var PDFPattern;
+
+	  PDFPattern = (function() {
+	    function PDFPattern(doc, bbox, xstep, ystep, stream, colored) {
+	      this.doc = doc;
+	      this.bbox = bbox;
+	      this.xstep = xstep;
+	      this.ystep = ystep;
+	      this.stream = stream;
+	      this.colored = colored;
+	      this.embedded = false;
+	      this.transform = [1, 0, 0, 1, 0, 0];
+	    }
+
+	    PDFPattern.prototype.embed = function() {
+	      var dx, dy, m, m0, m1, m11, m12, m2, m21, m22, m3, m4, m5, pattern, ref, v;
+	      if (this.embedded) {
+	        return;
+	      }
+	      this.embedded = true;
+	      this.id = 'P' + (++this.doc._patternCount);
+	      m = this.doc._ctm.slice();
+	      m0 = m[0], m1 = m[1], m2 = m[2], m3 = m[3], m4 = m[4], m5 = m[5];
+	      ref = this.transform, m11 = ref[0], m12 = ref[1], m21 = ref[2], m22 = ref[3], dx = ref[4], dy = ref[5];
+	      m[0] = m0 * m11 + m2 * m12;
+	      m[1] = m1 * m11 + m3 * m12;
+	      m[2] = m0 * m21 + m2 * m22;
+	      m[3] = m1 * m21 + m3 * m22;
+	      m[4] = m0 * dx + m2 * dy + m4;
+	      m[5] = m1 * dx + m3 * dy + m5;
+	      pattern = this.doc.ref({
+	        Type: 'Pattern',
+	        PatternType: 1,
+	        PaintType: this.colored ? 1 : 2,
+	        TilingType: 2,
+	        BBox: this.bbox,
+	        XStep: this.xstep,
+	        YStep: this.ystep,
+	        Matrix: (function() {
+	          var i, len, results;
+	          results = [];
+	          for (i = 0, len = m.length; i < len; i++) {
+	            v = m[i];
+	            results.push(+v.toFixed(5));
+	          }
+	          return results;
+	        })()
+	      });
+	      this.doc.page.patterns[this.id] = pattern;
+	      pattern.end(this.stream);
+	      return pattern;
+	    };
+
+	    PDFPattern.prototype.apply = function(stroke, color) {
+	      var csId, op;
+	      if (color == null) {
+	        color = null;
+	      }
+	      if (!this.embedded) {
+	        this.embed();
+	      }
+	      this.doc._embedPatternColorSpaces();
+	      op = stroke ? 'SCN' : 'scn';
+	      if (this.colored) {
+	        this.doc._setColorSpace('Pattern', stroke);
+	        return this.doc.addContent("/" + this.id + " " + op);
+	      } else {
+	        if (color == null) {
+	          color = 'black';
+	        }
+	        color = this.doc._normalizeColor(color);
+	        if (this.doc._isPatternColor(color)) {
+	          throw new Error("uncolored pattern must be colored with non-pattern color");
+	        }
+	        csId = this.doc._getPatternColorSpace(color);
+	        this.doc._setColorSpace(csId, stroke);
+	        return this.doc.addContent((color.join(' ')) + " /" + this.id + " " + op);
+	      }
+	    };
+
+	    return PDFPattern;
+
+	  })();
+
+	  module.exports = {
+	    PDFPattern: PDFPattern
+	  };
+
+	}).call(this);
+
+
+/***/ },
+/* 67 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -30441,7 +30627,7 @@
 	  var KAPPA, SVGPath,
 	    slice = [].slice;
 
-	  SVGPath = __webpack_require__(67);
+	  SVGPath = __webpack_require__(68);
 
 	  KAPPA = 4.0 * ((Math.sqrt(2) - 1.0) / 3.0);
 
@@ -30684,7 +30870,7 @@
 
 
 /***/ },
-/* 67 */
+/* 68 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -30692,7 +30878,7 @@
 	  var SVGPath;
 
 	  SVGPath = (function() {
-	    var apply, arcToSegments, cx, cy, parameters, parse, px, py, runners, segmentToBezier, solveArc, sx, sy;
+	    var apply, arcToSegments, cx, cy, fixRoundingError, parameters, parse, px, py, runners, segmentToBezier, solveArc, sx, sy;
 
 	    function SVGPath() {}
 
@@ -31037,13 +31223,20 @@
 	      a11 = cos_th * ry;
 	      th_half = 0.5 * (th1 - th0);
 	      t = (8 / 3) * Math.sin(th_half * 0.5) * Math.sin(th_half * 0.5) / Math.sin(th_half);
-	      x1 = cx + Math.cos(th0) - t * Math.sin(th0);
-	      y1 = cy + Math.sin(th0) + t * Math.cos(th0);
-	      x3 = cx + Math.cos(th1);
-	      y3 = cy + Math.sin(th1);
-	      x2 = x3 + t * Math.sin(th1);
-	      y2 = y3 - t * Math.cos(th1);
+	      x1 = fixRoundingError(cx + Math.cos(th0) - t * Math.sin(th0));
+	      y1 = fixRoundingError(cy + Math.sin(th0) + t * Math.cos(th0));
+	      x3 = fixRoundingError(cx + Math.cos(th1));
+	      y3 = fixRoundingError(cy + Math.sin(th1));
+	      x2 = fixRoundingError(x3 + t * Math.sin(th1));
+	      y2 = fixRoundingError(y3 - t * Math.cos(th1));
 	      return [a00 * x1 + a01 * y1, a10 * x1 + a11 * y1, a00 * x2 + a01 * y2, a10 * x2 + a11 * y2, a00 * x3 + a01 * y3, a10 * x3 + a11 * y3];
+	    };
+
+	    fixRoundingError = function(x) {
+	      if (Math.abs(Math.round(x) - x) < 0.0000000000001) {
+	        return Math.round(x);
+	      }
+	      return x;
 	    };
 
 	    return SVGPath;
@@ -31056,14 +31249,14 @@
 
 
 /***/ },
-/* 68 */
+/* 69 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var PDFFont;
 
-	  PDFFont = __webpack_require__(69);
+	  PDFFont = __webpack_require__(70);
 
 	  module.exports = {
 	    initFonts: function() {
@@ -31131,7 +31324,7 @@
 
 
 /***/ },
-/* 69 */
+/* 70 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer, __dirname) {// Generated by CoffeeScript 1.10.0
@@ -31144,11 +31337,11 @@
 	(function() {
 	  var AFMFont, PDFFont, Subset, TTFFont, fs;
 
-	  TTFFont = __webpack_require__(70);
+	  TTFFont = __webpack_require__(71);
 
-	  AFMFont = __webpack_require__(86);
+	  AFMFont = __webpack_require__(87);
 
-	  Subset = __webpack_require__(87);
+	  Subset = __webpack_require__(88);
 
 	  fs = __webpack_require__(43);
 
@@ -31431,7 +31624,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(21).Buffer, "/"))
 
 /***/ },
-/* 70 */
+/* 71 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -31440,31 +31633,31 @@
 
 	  fs = __webpack_require__(43);
 
-	  Data = __webpack_require__(71);
+	  Data = __webpack_require__(72);
 
-	  DFont = __webpack_require__(72);
+	  DFont = __webpack_require__(73);
 
-	  Directory = __webpack_require__(73);
+	  Directory = __webpack_require__(74);
 
-	  NameTable = __webpack_require__(74);
+	  NameTable = __webpack_require__(75);
 
-	  HeadTable = __webpack_require__(77);
+	  HeadTable = __webpack_require__(78);
 
-	  CmapTable = __webpack_require__(78);
+	  CmapTable = __webpack_require__(79);
 
-	  HmtxTable = __webpack_require__(79);
+	  HmtxTable = __webpack_require__(80);
 
-	  HheaTable = __webpack_require__(80);
+	  HheaTable = __webpack_require__(81);
 
-	  MaxpTable = __webpack_require__(81);
+	  MaxpTable = __webpack_require__(82);
 
-	  PostTable = __webpack_require__(82);
+	  PostTable = __webpack_require__(83);
 
-	  OS2Table = __webpack_require__(83);
+	  OS2Table = __webpack_require__(84);
 
-	  LocaTable = __webpack_require__(84);
+	  LocaTable = __webpack_require__(85);
 
-	  GlyfTable = __webpack_require__(85);
+	  GlyfTable = __webpack_require__(86);
 
 	  TTFFont = (function() {
 	    TTFFont.open = function(filename, name) {
@@ -31565,7 +31758,7 @@
 
 
 /***/ },
-/* 71 */
+/* 72 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -31763,7 +31956,7 @@
 
 
 /***/ },
-/* 72 */
+/* 73 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -31772,11 +31965,11 @@
 
 	  fs = __webpack_require__(43);
 
-	  Data = __webpack_require__(71);
+	  Data = __webpack_require__(72);
 
-	  Directory = __webpack_require__(73);
+	  Directory = __webpack_require__(74);
 
-	  NameTable = __webpack_require__(74);
+	  NameTable = __webpack_require__(75);
 
 	  DFont = (function() {
 	    DFont.open = function(filename) {
@@ -31876,7 +32069,7 @@
 
 
 /***/ },
-/* 73 */
+/* 74 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.10.0
@@ -31884,7 +32077,7 @@
 	  var Data, Directory,
 	    slice = [].slice;
 
-	  Data = __webpack_require__(71);
+	  Data = __webpack_require__(72);
 
 	  Directory = (function() {
 	    var checksum;
@@ -31974,7 +32167,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(21).Buffer))
 
 /***/ },
-/* 74 */
+/* 75 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -31983,11 +32176,11 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(75);
+	  Table = __webpack_require__(76);
 
-	  Data = __webpack_require__(71);
+	  Data = __webpack_require__(72);
 
-	  utils = __webpack_require__(76);
+	  utils = __webpack_require__(77);
 
 	  NameTable = (function(superClass) {
 	    var subsetTag;
@@ -32123,7 +32316,7 @@
 
 
 /***/ },
-/* 75 */
+/* 76 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32164,7 +32357,7 @@
 
 
 /***/ },
-/* 76 */
+/* 77 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32248,7 +32441,7 @@
 
 
 /***/ },
-/* 77 */
+/* 78 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32257,9 +32450,9 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(75);
+	  Table = __webpack_require__(76);
 
-	  Data = __webpack_require__(71);
+	  Data = __webpack_require__(72);
 
 	  HeadTable = (function(superClass) {
 	    extend(HeadTable, superClass);
@@ -32324,7 +32517,7 @@
 
 
 /***/ },
-/* 78 */
+/* 79 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32333,9 +32526,9 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(75);
+	  Table = __webpack_require__(76);
 
-	  Data = __webpack_require__(71);
+	  Data = __webpack_require__(72);
 
 	  CmapTable = (function(superClass) {
 	    extend(CmapTable, superClass);
@@ -32620,7 +32813,7 @@
 
 
 /***/ },
-/* 79 */
+/* 80 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32629,9 +32822,9 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(75);
+	  Table = __webpack_require__(76);
 
-	  Data = __webpack_require__(71);
+	  Data = __webpack_require__(72);
 
 	  HmtxTable = (function(superClass) {
 	    extend(HmtxTable, superClass);
@@ -32712,7 +32905,7 @@
 
 
 /***/ },
-/* 80 */
+/* 81 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32721,9 +32914,9 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(75);
+	  Table = __webpack_require__(76);
 
-	  Data = __webpack_require__(71);
+	  Data = __webpack_require__(72);
 
 	  HheaTable = (function(superClass) {
 	    extend(HheaTable, superClass);
@@ -32784,7 +32977,7 @@
 
 
 /***/ },
-/* 81 */
+/* 82 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32793,9 +32986,9 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(75);
+	  Table = __webpack_require__(76);
 
-	  Data = __webpack_require__(71);
+	  Data = __webpack_require__(72);
 
 	  MaxpTable = (function(superClass) {
 	    extend(MaxpTable, superClass);
@@ -32856,7 +33049,7 @@
 
 
 /***/ },
-/* 82 */
+/* 83 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32865,9 +33058,9 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(75);
+	  Table = __webpack_require__(76);
 
-	  Data = __webpack_require__(71);
+	  Data = __webpack_require__(72);
 
 	  PostTable = (function(superClass) {
 	    var POSTSCRIPT_GLYPHS;
@@ -32998,7 +33191,7 @@
 
 
 /***/ },
-/* 83 */
+/* 84 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -33007,7 +33200,7 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(75);
+	  Table = __webpack_require__(76);
 
 	  OS2Table = (function(superClass) {
 	    extend(OS2Table, superClass);
@@ -33095,7 +33288,7 @@
 
 
 /***/ },
-/* 84 */
+/* 85 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -33104,9 +33297,9 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(75);
+	  Table = __webpack_require__(76);
 
-	  Data = __webpack_require__(71);
+	  Data = __webpack_require__(72);
 
 	  LocaTable = (function(superClass) {
 	    extend(LocaTable, superClass);
@@ -33188,7 +33381,7 @@
 
 
 /***/ },
-/* 85 */
+/* 86 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -33198,9 +33391,9 @@
 	    hasProp = {}.hasOwnProperty,
 	    slice = [].slice;
 
-	  Table = __webpack_require__(75);
+	  Table = __webpack_require__(76);
 
-	  Data = __webpack_require__(71);
+	  Data = __webpack_require__(72);
 
 	  GlyfTable = (function(superClass) {
 	    extend(GlyfTable, superClass);
@@ -33354,7 +33547,7 @@
 
 
 /***/ },
-/* 86 */
+/* 87 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -33498,7 +33691,7 @@
 
 
 /***/ },
-/* 87 */
+/* 88 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -33506,9 +33699,9 @@
 	  var CmapTable, Subset, utils,
 	    indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
-	  CmapTable = __webpack_require__(78);
+	  CmapTable = __webpack_require__(79);
 
-	  utils = __webpack_require__(76);
+	  utils = __webpack_require__(77);
 
 	  Subset = (function() {
 	    function Subset(font) {
@@ -33661,14 +33854,14 @@
 
 
 /***/ },
-/* 88 */
+/* 89 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var LineWrapper;
 
-	  LineWrapper = __webpack_require__(89);
+	  LineWrapper = __webpack_require__(90);
 
 	  module.exports = {
 	    initText: function() {
@@ -33975,7 +34168,7 @@
 
 
 /***/ },
-/* 89 */
+/* 90 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -33984,9 +34177,9 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  EventEmitter = __webpack_require__(26).EventEmitter;
+	  EventEmitter = __webpack_require__(91).EventEmitter;
 
-	  LineBreaker = __webpack_require__(90);
+	  LineBreaker = __webpack_require__(92);
 
 	  LineWrapper = (function(superClass) {
 	    extend(LineWrapper, superClass);
@@ -34233,20 +34426,324 @@
 
 
 /***/ },
-/* 90 */
+/* 91 */
+/***/ function(module, exports) {
+
+	// Copyright Joyent, Inc. and other Node contributors.
+	//
+	// Permission is hereby granted, free of charge, to any person obtaining a
+	// copy of this software and associated documentation files (the
+	// "Software"), to deal in the Software without restriction, including
+	// without limitation the rights to use, copy, modify, merge, publish,
+	// distribute, sublicense, and/or sell copies of the Software, and to permit
+	// persons to whom the Software is furnished to do so, subject to the
+	// following conditions:
+	//
+	// The above copyright notice and this permission notice shall be included
+	// in all copies or substantial portions of the Software.
+	//
+	// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+	// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+	// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+	// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+	// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+	// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+	// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+	function EventEmitter() {
+	  this._events = this._events || {};
+	  this._maxListeners = this._maxListeners || undefined;
+	}
+	module.exports = EventEmitter;
+
+	// Backwards-compat with node 0.10.x
+	EventEmitter.EventEmitter = EventEmitter;
+
+	EventEmitter.prototype._events = undefined;
+	EventEmitter.prototype._maxListeners = undefined;
+
+	// By default EventEmitters will print a warning if more than 10 listeners are
+	// added to it. This is a useful default which helps finding memory leaks.
+	EventEmitter.defaultMaxListeners = 10;
+
+	// Obviously not all Emitters should be limited to 10. This function allows
+	// that to be increased. Set to zero for unlimited.
+	EventEmitter.prototype.setMaxListeners = function(n) {
+	  if (!isNumber(n) || n < 0 || isNaN(n))
+	    throw TypeError('n must be a positive number');
+	  this._maxListeners = n;
+	  return this;
+	};
+
+	EventEmitter.prototype.emit = function(type) {
+	  var er, handler, len, args, i, listeners;
+
+	  if (!this._events)
+	    this._events = {};
+
+	  // If there is no 'error' event listener then throw.
+	  if (type === 'error') {
+	    if (!this._events.error ||
+	        (isObject(this._events.error) && !this._events.error.length)) {
+	      er = arguments[1];
+	      if (er instanceof Error) {
+	        throw er; // Unhandled 'error' event
+	      }
+	      throw TypeError('Uncaught, unspecified "error" event.');
+	    }
+	  }
+
+	  handler = this._events[type];
+
+	  if (isUndefined(handler))
+	    return false;
+
+	  if (isFunction(handler)) {
+	    switch (arguments.length) {
+	      // fast cases
+	      case 1:
+	        handler.call(this);
+	        break;
+	      case 2:
+	        handler.call(this, arguments[1]);
+	        break;
+	      case 3:
+	        handler.call(this, arguments[1], arguments[2]);
+	        break;
+	      // slower
+	      default:
+	        args = Array.prototype.slice.call(arguments, 1);
+	        handler.apply(this, args);
+	    }
+	  } else if (isObject(handler)) {
+	    args = Array.prototype.slice.call(arguments, 1);
+	    listeners = handler.slice();
+	    len = listeners.length;
+	    for (i = 0; i < len; i++)
+	      listeners[i].apply(this, args);
+	  }
+
+	  return true;
+	};
+
+	EventEmitter.prototype.addListener = function(type, listener) {
+	  var m;
+
+	  if (!isFunction(listener))
+	    throw TypeError('listener must be a function');
+
+	  if (!this._events)
+	    this._events = {};
+
+	  // To avoid recursion in the case that type === "newListener"! Before
+	  // adding it to the listeners, first emit "newListener".
+	  if (this._events.newListener)
+	    this.emit('newListener', type,
+	              isFunction(listener.listener) ?
+	              listener.listener : listener);
+
+	  if (!this._events[type])
+	    // Optimize the case of one listener. Don't need the extra array object.
+	    this._events[type] = listener;
+	  else if (isObject(this._events[type]))
+	    // If we've already got an array, just append.
+	    this._events[type].push(listener);
+	  else
+	    // Adding the second element, need to change to array.
+	    this._events[type] = [this._events[type], listener];
+
+	  // Check for listener leak
+	  if (isObject(this._events[type]) && !this._events[type].warned) {
+	    if (!isUndefined(this._maxListeners)) {
+	      m = this._maxListeners;
+	    } else {
+	      m = EventEmitter.defaultMaxListeners;
+	    }
+
+	    if (m && m > 0 && this._events[type].length > m) {
+	      this._events[type].warned = true;
+	      console.error('(node) warning: possible EventEmitter memory ' +
+	                    'leak detected. %d listeners added. ' +
+	                    'Use emitter.setMaxListeners() to increase limit.',
+	                    this._events[type].length);
+	      if (typeof console.trace === 'function') {
+	        // not supported in IE 10
+	        console.trace();
+	      }
+	    }
+	  }
+
+	  return this;
+	};
+
+	EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+	EventEmitter.prototype.once = function(type, listener) {
+	  if (!isFunction(listener))
+	    throw TypeError('listener must be a function');
+
+	  var fired = false;
+
+	  function g() {
+	    this.removeListener(type, g);
+
+	    if (!fired) {
+	      fired = true;
+	      listener.apply(this, arguments);
+	    }
+	  }
+
+	  g.listener = listener;
+	  this.on(type, g);
+
+	  return this;
+	};
+
+	// emits a 'removeListener' event iff the listener was removed
+	EventEmitter.prototype.removeListener = function(type, listener) {
+	  var list, position, length, i;
+
+	  if (!isFunction(listener))
+	    throw TypeError('listener must be a function');
+
+	  if (!this._events || !this._events[type])
+	    return this;
+
+	  list = this._events[type];
+	  length = list.length;
+	  position = -1;
+
+	  if (list === listener ||
+	      (isFunction(list.listener) && list.listener === listener)) {
+	    delete this._events[type];
+	    if (this._events.removeListener)
+	      this.emit('removeListener', type, listener);
+
+	  } else if (isObject(list)) {
+	    for (i = length; i-- > 0;) {
+	      if (list[i] === listener ||
+	          (list[i].listener && list[i].listener === listener)) {
+	        position = i;
+	        break;
+	      }
+	    }
+
+	    if (position < 0)
+	      return this;
+
+	    if (list.length === 1) {
+	      list.length = 0;
+	      delete this._events[type];
+	    } else {
+	      list.splice(position, 1);
+	    }
+
+	    if (this._events.removeListener)
+	      this.emit('removeListener', type, listener);
+	  }
+
+	  return this;
+	};
+
+	EventEmitter.prototype.removeAllListeners = function(type) {
+	  var key, listeners;
+
+	  if (!this._events)
+	    return this;
+
+	  // not listening for removeListener, no need to emit
+	  if (!this._events.removeListener) {
+	    if (arguments.length === 0)
+	      this._events = {};
+	    else if (this._events[type])
+	      delete this._events[type];
+	    return this;
+	  }
+
+	  // emit removeListener for all listeners on all events
+	  if (arguments.length === 0) {
+	    for (key in this._events) {
+	      if (key === 'removeListener') continue;
+	      this.removeAllListeners(key);
+	    }
+	    this.removeAllListeners('removeListener');
+	    this._events = {};
+	    return this;
+	  }
+
+	  listeners = this._events[type];
+
+	  if (isFunction(listeners)) {
+	    this.removeListener(type, listeners);
+	  } else if (listeners) {
+	    // LIFO order
+	    while (listeners.length)
+	      this.removeListener(type, listeners[listeners.length - 1]);
+	  }
+	  delete this._events[type];
+
+	  return this;
+	};
+
+	EventEmitter.prototype.listeners = function(type) {
+	  var ret;
+	  if (!this._events || !this._events[type])
+	    ret = [];
+	  else if (isFunction(this._events[type]))
+	    ret = [this._events[type]];
+	  else
+	    ret = this._events[type].slice();
+	  return ret;
+	};
+
+	EventEmitter.prototype.listenerCount = function(type) {
+	  if (this._events) {
+	    var evlistener = this._events[type];
+
+	    if (isFunction(evlistener))
+	      return 1;
+	    else if (evlistener)
+	      return evlistener.length;
+	  }
+	  return 0;
+	};
+
+	EventEmitter.listenerCount = function(emitter, type) {
+	  return emitter.listenerCount(type);
+	};
+
+	function isFunction(arg) {
+	  return typeof arg === 'function';
+	}
+
+	function isNumber(arg) {
+	  return typeof arg === 'number';
+	}
+
+	function isObject(arg) {
+	  return typeof arg === 'object' && arg !== null;
+	}
+
+	function isUndefined(arg) {
+	  return arg === void 0;
+	}
+
+
+/***/ },
+/* 92 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.7.1
 	(function() {
 	  var AI, AL, BA, BK, CB, CI_BRK, CJ, CP_BRK, CR, DI_BRK, ID, IN_BRK, LF, LineBreaker, NL, NS, PR_BRK, SA, SG, SP, UnicodeTrie, WJ, XX, characterClasses, classTrie, pairTable, _ref, _ref1;
 
-	  UnicodeTrie = __webpack_require__(91);
+	  UnicodeTrie = __webpack_require__(93);
 
-	  classTrie = new UnicodeTrie(__webpack_require__(92));
+	  classTrie = new UnicodeTrie(__webpack_require__(94));
 
-	  _ref = __webpack_require__(93), BK = _ref.BK, CR = _ref.CR, LF = _ref.LF, NL = _ref.NL, CB = _ref.CB, BA = _ref.BA, SP = _ref.SP, WJ = _ref.WJ, SP = _ref.SP, BK = _ref.BK, LF = _ref.LF, NL = _ref.NL, AI = _ref.AI, AL = _ref.AL, SA = _ref.SA, SG = _ref.SG, XX = _ref.XX, CJ = _ref.CJ, ID = _ref.ID, NS = _ref.NS, characterClasses = _ref.characterClasses;
+	  _ref = __webpack_require__(95), BK = _ref.BK, CR = _ref.CR, LF = _ref.LF, NL = _ref.NL, CB = _ref.CB, BA = _ref.BA, SP = _ref.SP, WJ = _ref.WJ, SP = _ref.SP, BK = _ref.BK, LF = _ref.LF, NL = _ref.NL, AI = _ref.AI, AL = _ref.AL, SA = _ref.SA, SG = _ref.SG, XX = _ref.XX, CJ = _ref.CJ, ID = _ref.ID, NS = _ref.NS, characterClasses = _ref.characterClasses;
 
-	  _ref1 = __webpack_require__(94), DI_BRK = _ref1.DI_BRK, IN_BRK = _ref1.IN_BRK, CI_BRK = _ref1.CI_BRK, CP_BRK = _ref1.CP_BRK, PR_BRK = _ref1.PR_BRK, pairTable = _ref1.pairTable;
+	  _ref1 = __webpack_require__(96), DI_BRK = _ref1.DI_BRK, IN_BRK = _ref1.IN_BRK, CI_BRK = _ref1.CI_BRK, CP_BRK = _ref1.CP_BRK, PR_BRK = _ref1.PR_BRK, pairTable = _ref1.pairTable;
 
 	  LineBreaker = (function() {
 	    var Break, mapClass, mapFirst;
@@ -34394,7 +34891,7 @@
 
 
 /***/ },
-/* 91 */
+/* 93 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.7.1
@@ -34486,7 +34983,7 @@
 
 
 /***/ },
-/* 92 */
+/* 94 */
 /***/ function(module, exports) {
 
 	module.exports = {
@@ -67113,7 +67610,7 @@
 	};
 
 /***/ },
-/* 93 */
+/* 95 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.7.1
@@ -67204,7 +67701,7 @@
 
 
 /***/ },
-/* 94 */
+/* 96 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.7.1
@@ -67227,14 +67724,14 @@
 
 
 /***/ },
-/* 95 */
+/* 97 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var PDFImage;
 
-	  PDFImage = __webpack_require__(96);
+	  PDFImage = __webpack_require__(98);
 
 	  module.exports = {
 	    initImages: function() {
@@ -67316,7 +67813,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(21).Buffer))
 
 /***/ },
-/* 96 */
+/* 98 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.10.0
@@ -67331,11 +67828,11 @@
 
 	  fs = __webpack_require__(43);
 
-	  Data = __webpack_require__(71);
+	  Data = __webpack_require__(72);
 
-	  JPEG = __webpack_require__(97);
+	  JPEG = __webpack_require__(99);
 
-	  PNG = __webpack_require__(98);
+	  PNG = __webpack_require__(100);
 
 	  PDFImage = (function() {
 	    function PDFImage() {}
@@ -67344,6 +67841,8 @@
 	      var data, match;
 	      if (Buffer.isBuffer(src)) {
 	        data = src;
+	      } else if (src instanceof ArrayBuffer) {
+	        data = new Buffer(new Uint8Array(src));
 	      } else {
 	        if (match = /^data:.+;base64,(.*)$/.exec(src)) {
 	          data = new Buffer(match[1], 'base64');
@@ -67374,7 +67873,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(21).Buffer))
 
 /***/ },
-/* 97 */
+/* 99 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -67458,7 +67957,7 @@
 
 
 /***/ },
-/* 98 */
+/* 100 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.10.0
@@ -67467,7 +67966,7 @@
 
 	  zlib = __webpack_require__(46);
 
-	  PNG = __webpack_require__(99);
+	  PNG = __webpack_require__(101);
 
 	  PNGImage = (function() {
 	    function PNGImage(data, label) {
@@ -67623,7 +68122,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(21).Buffer))
 
 /***/ },
-/* 99 */
+/* 101 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.4.0
@@ -67947,7 +68446,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(21).Buffer))
 
 /***/ },
-/* 100 */
+/* 102 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -68086,7 +68585,7 @@
 
 
 /***/ },
-/* 101 */
+/* 103 */
 /***/ function(module, exports) {
 
 	module.exports = {
@@ -68144,14 +68643,14 @@
 
 
 /***/ },
-/* 102 */
+/* 104 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {/* jslint node: true */
 	'use strict';
 
 	var pdfKit = __webpack_require__(20);
-	var PDFImage = __webpack_require__(96);
+	var PDFImage = __webpack_require__(98);
 
 	function ImageMeasure(pdfDoc, imageDictionary) {
 		this.pdfDoc = pdfDoc;
@@ -68192,7 +68691,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(21).Buffer))
 
 /***/ },
-/* 103 */
+/* 105 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
@@ -68329,6 +68828,7 @@
 
 	function drawBackground(line, x, y, pdfKitDoc) {
 		var height = line.getHeight();
+		pdfKitDoc.save();
 		for(var i = 0, l = line.inlines.length; i < l; i++) {
 			var inline = line.inlines[i];
 				if(inline.background) {
@@ -68337,6 +68837,7 @@
 								.fill();
 				}
 		}
+		pdfKitDoc.restore();
 	}
 
 	module.exports = {
@@ -68344,8 +68845,9 @@
 		drawDecorations: drawDecorations
 	};
 
+
 /***/ },
-/* 104 */
+/* 106 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/* FileSaver.js
@@ -68599,7 +69101,7 @@
 
 	if (typeof module !== "undefined" && module.exports) {
 	  module.exports.saveAs = saveAs;
-	} else if (("function" !== "undefined" && __webpack_require__(105) !== null) && (__webpack_require__(106) != null)) {
+	} else if (("function" !== "undefined" && __webpack_require__(107) !== null) && (__webpack_require__(108) != null)) {
 	  !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = function() {
 	    return saveAs;
 	  }.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -68607,14 +69109,14 @@
 
 
 /***/ },
-/* 105 */
+/* 107 */
 /***/ function(module, exports) {
 
 	module.exports = function() { throw new Error("define cannot be used indirect"); };
 
 
 /***/ },
-/* 106 */
+/* 108 */
 /***/ function(module, exports) {
 
 	/* WEBPACK VAR INJECTION */(function(__webpack_amd_options__) {module.exports = __webpack_amd_options__;

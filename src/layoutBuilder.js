@@ -448,6 +448,8 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
         if (height) {
           var lastClipItem = self.writer.beginClip(width, height);
         }
+        var ctxX = self.writer.context().x;
+        var ctxY = self.writer.context().y;
         self.processNode(column);
         verticalAlignCols[colI] = self.verticalAlignItemStack.length - 1;
         addAll(positions, column.positions);
@@ -458,6 +460,19 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
             // optimize by removing unnecessary clipping; this is ugly
             lastClipItem.type = '';
           }
+        }
+        if (column.pattern) {
+          self.writer.addVector({
+            type: 'rect',
+            x: ctxX,
+            y: ctxY,
+            w: width,
+            h: height,
+            lineWidth: 0,
+            color: column.color,
+            fillOpacity: column.fillOpacity,
+            pattern: column.pattern
+          }, true, true);
         }
       } else if (column._columnEndingContext) {
         // row-span ending

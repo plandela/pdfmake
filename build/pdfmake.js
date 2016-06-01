@@ -13780,9 +13780,11 @@
 	      }
 	      if (column.layers) {
 	        column.layers.forEach(function(layer) {
-	          var item = self.verticalAlignItemStack[layer._verticalAlignIdx].begin.item;
-	          item.viewHeight = rowHeight;
-	          item.nodeHeight = layer._height;
+	          if(layer.verticalAlign) {
+	            var item = self.verticalAlignItemStack[layer._verticalAlignIdx].begin.item;
+	            item.viewHeight = rowHeight;
+	            item.nodeHeight = layer._height;
+	          }
 	        });
 	      }
 	    }

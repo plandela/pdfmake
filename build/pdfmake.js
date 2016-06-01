@@ -681,10 +681,10 @@
 	  if (pdfKitDoc.patterns)
 	    return;
 	  pdfKitDoc.patterns = {
-	    stripe45d: pdfKitDoc.pattern([0, 0, 9, 9], 3, 3, '1 w 0 9 m 9 0 l s'),
-	    stripe45dWide: pdfKitDoc.pattern([0, 0, 9, 9], 6, 6, '1 w 0 9 m 9 0 l s'),
-	    stripe45u: pdfKitDoc.pattern([0, 0, 9, 9], 3, 3, '1 w 0 0 m 9 9 l s'),
-	    stripe45uWide: pdfKitDoc.pattern([0, 0, 9, 9], 6, 6, '1 w 0 0 m 9 9 l s')
+	    stripe45d: pdfKitDoc.pattern([1, 1, 4, 4], 3, 3, '1 w 0 1 m 4 5 l s 2 0 m 5 3 l s'),
+	    stripe45dWide: pdfKitDoc.pattern([1, 1, 7, 7], 6, 6, '1 w 0 1 m 7 8 l s 5 0 m 8 3 l s'),
+	    stripe45u: pdfKitDoc.pattern([1, 1, 4, 4], 3, 3, '1 w 0 4 m 4 0 l s 2 5 m 5 2 l s'),
+	    stripe45uWide: pdfKitDoc.pattern([1, 1, 7, 7], 6, 6, '1 w 0 7 m 7 0 l s 5 8 m 8 5 l s')
 	  }
 	}
 
@@ -13338,6 +13338,7 @@
 	      nodeInfo.pageNumbers = _.chain(node.positions).map('pageNumber').uniq().value();
 	      nodeInfo.pages = pages.length;
 	      nodeInfo.stack = _.isArray(node.stack);
+	      nodeInfo.layers = _.isArray(node.layers);
 
 	      node.nodeInfo = nodeInfo;
 	    });
@@ -13590,6 +13591,8 @@
 
 	    if (node.stack) {
 	      self.processVerticalContainer(node);
+	    } else if (node.layers) {
+	      self.processLayers(node);
 	    } else if (node.columns) {
 	      self.processColumns(node);
 	    } else if (node.ul) {
@@ -13648,13 +13651,33 @@
 
 	// vertical container
 	LayoutBuilder.prototype.processVerticalContainer = function(node) {
-		var self = this;
-		node.stack.forEach(function(item) {
-			self.processNode(item);
-			addAll(node.positions, item.positions);
+	  var self = this;
+	  node.stack.forEach(function(item) {
+	    self.processNode(item);
+	    addAll(node.positions, item.positions);
 
-			//TODO: paragraph gap
-		});
+	    //TODO: paragraph gap
+	  });
+	};
+
+	// layers
+	LayoutBuilder.prototype.processLayers = function(node) {
+	  var self = this;
+	  var ctxX = self.writer.context().x;
+	  var ctxY = self.writer.context().y;
+	  var maxX = ctxX;
+	  var maxY = ctxY;
+	  node.layers.forEach(function(item, i) {
+	    self.writer.context().x = ctxX;
+	    self.writer.context().y = ctxY;
+	    self.processNode(item);
+	    item._verticalAlignIdx = self.verticalAlignItemStack.length - 1;
+	    addAll(node.positions, item.positions);
+	    maxX = self.writer.context().x > maxX ? self.writer.context().x : maxX;
+	    maxY = self.writer.context().y > maxY ? self.writer.context().y : maxY;
+	  });
+	  self.writer.context().x = maxX;
+	  self.writer.context().y = maxY;
 	};
 
 	// columns
@@ -13749,10 +13772,18 @@
 	    var rowHeight = self.writer.context().height;
 	    for(var i = 0, l = columns.length; i < l; i++) {
 	      var column = columns[i];
-	      if (!column._span && column.verticalAlign) {
+	      if (column._span) continue;
+	      if (column.verticalAlign) {
 	        var item = self.verticalAlignItemStack[verticalAlignCols[i]].begin.item;
 	        item.viewHeight = rowHeight;
 	        item.nodeHeight = column._height;
+	      }
+	      if (column.layers) {
+	        column.layers.forEach(function(layer) {
+	          var item = self.verticalAlignItemStack[layer._verticalAlignIdx].begin.item;
+	          item.viewHeight = rowHeight;
+	          item.nodeHeight = layer._height;
+	        });
 	      }
 	    }
 	  });
@@ -14040,6 +14071,8 @@
 				return extendMargins(self.measureColumns(node));
 			} else if (node.stack) {
 				return extendMargins(self.measureVerticalContainer(node));
+			} else if (node.layers) {
+				return extendMargins(self.measureLayers(node));
 			} else if (node.ul) {
 				return extendMargins(self.measureList(false, node));
 			} else if (node.ol) {
@@ -14184,6 +14217,22 @@
 
 	DocMeasure.prototype.measureVerticalContainer = function (node) {
 		var items = node.stack;
+
+		node._minWidth = 0;
+		node._maxWidth = 0;
+
+		for (var i = 0, l = items.length; i < l; i++) {
+			items[i] = this.measureNode(items[i]);
+
+			node._minWidth = Math.max(node._minWidth, items[i]._minWidth);
+			node._maxWidth = Math.max(node._maxWidth, items[i]._maxWidth);
+		}
+
+		return node;
+	};
+
+	DocMeasure.prototype.measureLayers = function (node) {
+		var items = node.layers;
 
 		node._minWidth = 0;
 		node._maxWidth = 0;
@@ -30537,47 +30586,48 @@
 	      this.ystep = ystep;
 	      this.stream = stream;
 	      this.colored = colored;
-	      this.embedded = false;
 	      this.transform = [1, 0, 0, 1, 0, 0];
 	    }
 
 	    PDFPattern.prototype.embed = function() {
-	      var dx, dy, m, m0, m1, m11, m12, m2, m21, m22, m3, m4, m5, pattern, ref, v;
-	      if (this.embedded) {
+	      var dx, dy, m, m0, m1, m11, m12, m2, m21, m22, m3, m4, m5, ref, v;
+	      if (this.id && this.doc.page.patterns[this.id]) {
 	        return;
 	      }
-	      this.embedded = true;
-	      this.id = 'P' + (++this.doc._patternCount);
-	      m = this.doc._ctm.slice();
-	      m0 = m[0], m1 = m[1], m2 = m[2], m3 = m[3], m4 = m[4], m5 = m[5];
-	      ref = this.transform, m11 = ref[0], m12 = ref[1], m21 = ref[2], m22 = ref[3], dx = ref[4], dy = ref[5];
-	      m[0] = m0 * m11 + m2 * m12;
-	      m[1] = m1 * m11 + m3 * m12;
-	      m[2] = m0 * m21 + m2 * m22;
-	      m[3] = m1 * m21 + m3 * m22;
-	      m[4] = m0 * dx + m2 * dy + m4;
-	      m[5] = m1 * dx + m3 * dy + m5;
-	      pattern = this.doc.ref({
-	        Type: 'Pattern',
-	        PatternType: 1,
-	        PaintType: this.colored ? 1 : 2,
-	        TilingType: 2,
-	        BBox: this.bbox,
-	        XStep: this.xstep,
-	        YStep: this.ystep,
-	        Matrix: (function() {
-	          var i, len, results;
-	          results = [];
-	          for (i = 0, len = m.length; i < len; i++) {
-	            v = m[i];
-	            results.push(+v.toFixed(5));
-	          }
-	          return results;
-	        })()
-	      });
-	      this.doc.page.patterns[this.id] = pattern;
-	      pattern.end(this.stream);
-	      return pattern;
+	      if (!this.id) {
+	        this.id = 'P' + (++this.doc._patternCount);
+	      }
+	      if (!this.pattern) {
+	        m = this.doc._ctm.slice();
+	        m0 = m[0], m1 = m[1], m2 = m[2], m3 = m[3], m4 = m[4], m5 = m[5];
+	        ref = this.transform, m11 = ref[0], m12 = ref[1], m21 = ref[2], m22 = ref[3], dx = ref[4], dy = ref[5];
+	        m[0] = m0 * m11 + m2 * m12;
+	        m[1] = m1 * m11 + m3 * m12;
+	        m[2] = m0 * m21 + m2 * m22;
+	        m[3] = m1 * m21 + m3 * m22;
+	        m[4] = m0 * dx + m2 * dy + m4;
+	        m[5] = m1 * dx + m3 * dy + m5;
+	        this.pattern = this.doc.ref({
+	          Type: 'Pattern',
+	          PatternType: 1,
+	          PaintType: this.colored ? 1 : 2,
+	          TilingType: 2,
+	          BBox: this.bbox,
+	          XStep: this.xstep,
+	          YStep: this.ystep,
+	          Matrix: (function() {
+	            var i, len, results;
+	            results = [];
+	            for (i = 0, len = m.length; i < len; i++) {
+	              v = m[i];
+	              results.push(+v.toFixed(5));
+	            }
+	            return results;
+	          })()
+	        });
+	        this.pattern.end(this.stream);
+	      }
+	      return this.doc.page.patterns[this.id] = this.pattern;
 	    };
 
 	    PDFPattern.prototype.apply = function(stroke, color) {
@@ -30585,9 +30635,7 @@
 	      if (color == null) {
 	        color = null;
 	      }
-	      if (!this.embedded) {
-	        this.embed();
-	      }
+	      this.embed();
 	      this.doc._embedPatternColorSpaces();
 	      op = stroke ? 'SCN' : 'scn';
 	      if (this.colored) {

@@ -69,5 +69,6 @@ gulp.task('lint', function() {
 
 gulp.task('watch', function() {
     gulp.watch('./src/**', ['test', 'build']);
+    gulp.watch('./node_modules/pdfkit/build/pdfkit.js', ['test', 'build']);
     gulp.watch('./tests/**', ['test']);
 });

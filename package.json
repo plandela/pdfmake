@@ -12,6 +12,8 @@
   },
   "devDependencies": {
     "expose-loader": "^0.6.0",
+    "grunt": "^1.0.1",
+    "grunt-dump-dir": "^0.1.2",
     "gulp": "^3.8.11",
     "gulp-jshint": "^1.10.0",
     "gulp-rename": "^1.2.2",

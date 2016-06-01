@@ -74,6 +74,7 @@ LayoutBuilder.prototype.layoutDocument = function (docStructure, fontProvider, s
       nodeInfo.pageNumbers = _.chain(node.positions).map('pageNumber').uniq().value();
       nodeInfo.pages = pages.length;
       nodeInfo.stack = _.isArray(node.stack);
+      nodeInfo.layers = _.isArray(node.layers);
 
       node.nodeInfo = nodeInfo;
     });
@@ -326,6 +327,8 @@ LayoutBuilder.prototype.processNode = function(node) {
 
     if (node.stack) {
       self.processVerticalContainer(node);
+    } else if (node.layers) {
+      self.processLayers(node);
     } else if (node.columns) {
       self.processColumns(node);
     } else if (node.ul) {
@@ -384,13 +387,33 @@ LayoutBuilder.prototype.processNode = function(node) {
 
 // vertical container
 LayoutBuilder.prototype.processVerticalContainer = function(node) {
-	var self = this;
-	node.stack.forEach(function(item) {
-		self.processNode(item);
-		addAll(node.positions, item.positions);
+  var self = this;
+  node.stack.forEach(function(item) {
+    self.processNode(item);
+    addAll(node.positions, item.positions);
 
-		//TODO: paragraph gap
-	});
+    //TODO: paragraph gap
+  });
+};
+
+// layers
+LayoutBuilder.prototype.processLayers = function(node) {
+  var self = this;
+  var ctxX = self.writer.context().x;
+  var ctxY = self.writer.context().y;
+  var maxX = ctxX;
+  var maxY = ctxY;
+  node.layers.forEach(function(item, i) {
+    self.writer.context().x = ctxX;
+    self.writer.context().y = ctxY;
+    self.processNode(item);
+    item._verticalAlignIdx = self.verticalAlignItemStack.length - 1;
+    addAll(node.positions, item.positions);
+    maxX = self.writer.context().x > maxX ? self.writer.context().x : maxX;
+    maxY = self.writer.context().y > maxY ? self.writer.context().y : maxY;
+  });
+  self.writer.context().x = maxX;
+  self.writer.context().y = maxY;
 };
 
 // columns
@@ -485,10 +508,18 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
     var rowHeight = self.writer.context().height;
     for(var i = 0, l = columns.length; i < l; i++) {
       var column = columns[i];
-      if (!column._span && column.verticalAlign) {
+      if (column._span) continue;
+      if (column.verticalAlign) {
         var item = self.verticalAlignItemStack[verticalAlignCols[i]].begin.item;
         item.viewHeight = rowHeight;
         item.nodeHeight = column._height;
+      }
+      if (column.layers) {
+        column.layers.forEach(function(layer) {
+          var item = self.verticalAlignItemStack[layer._verticalAlignIdx].begin.item;
+          item.viewHeight = rowHeight;
+          item.nodeHeight = layer._height;
+        });
       }
     }
   });

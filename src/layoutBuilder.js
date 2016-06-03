@@ -315,8 +315,9 @@ LayoutBuilder.prototype.processNode = function(node) {
 
   var prevTop = self.writer.context().getCurrentPosition().top;
   applyMargins(function() {
+    var verticalAlignBegin;
     if (node.verticalAlign) {
-      var verticalAlignBegin = self.writer.beginVerticalAlign(node.verticalAlign);
+      verticalAlignBegin = self.writer.beginVerticalAlign(node.verticalAlign);
     }
 
     var absPosition = node.absolutePosition;
@@ -452,10 +453,10 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
 
     self.writer.context().beginColumnGroup();
 
-    var verticalAlignCols = {};
+    var verticalAlignCols = {}, column;
 
     for(var i = 0, l = columns.length; i < l; i++) {
-      var column = columns[i];
+      column = columns[i];
       var width = widths[i]._calcWidth;
       var leftOffset = colLeftOffset(i);
       var colI = i;
@@ -468,8 +469,9 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
 
       self.writer.context().beginColumn(width, leftOffset, getEndingCell(column, i));
       if (!column._span) {
+        var lastClipItem;
         if (height) {
-          var lastClipItem = self.writer.beginClip(width, height);
+          lastClipItem = self.writer.beginClip(width, height);
         }
         var ctxX = self.writer.context().x;
         var ctxY = self.writer.context().y;
@@ -506,8 +508,8 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
     self.writer.context().completeColumnGroup(height);
 
     var rowHeight = self.writer.context().height;
-    for(var i = 0, l = columns.length; i < l; i++) {
-      var column = columns[i];
+    for(i = 0, l = columns.length; i < l; i++) {
+      column = columns[i];
       if (column._span) continue;
       if (column.verticalAlign) {
         var item = self.verticalAlignItemStack[verticalAlignCols[i]].begin.item;
@@ -515,13 +517,7 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
         item.nodeHeight = column._height;
       }
       if (column.layers) {
-        column.layers.forEach(function(layer) {
-          if(layer.verticalAlign) {
-            var item = self.verticalAlignItemStack[layer._verticalAlignIdx].begin.item;
-            item.viewHeight = rowHeight;
-            item.nodeHeight = layer._height;
-          }
-        });
+        column.layers.forEach(verticalAlignLayer);
       }
     }
   });
@@ -560,6 +556,14 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
     }
 
     return null;
+  }
+
+  function verticalAlignLayer(layer) {
+    if(layer.verticalAlign) {
+      var item = self.verticalAlignItemStack[layer._verticalAlignIdx].begin.item;
+      item.viewHeight = self.writer.context().height;
+      item.nodeHeight = layer._height;
+    }
   }
 };
 

@@ -57,7 +57,7 @@
 	'use strict';
 
 	var PdfPrinter = __webpack_require__(2);
-	var FileSaver = __webpack_require__(106);
+	var FileSaver = __webpack_require__(104);
 	var saveAs = FileSaver.saveAs;
 
 	var defaultClientFonts = {
@@ -244,9 +244,9 @@
 	var LayoutBuilder = __webpack_require__(7);
 	var PdfKit = __webpack_require__(20);
 	var PDFReference = __webpack_require__(45);
-	var sizes = __webpack_require__(103);
-	var ImageMeasure = __webpack_require__(104);
-	var textDecorator = __webpack_require__(105);
+	var sizes = __webpack_require__(101);
+	var ImageMeasure = __webpack_require__(102);
+	var textDecorator = __webpack_require__(103);
 	var FontProvider = __webpack_require__(5);
 
 	_.noConflict();
@@ -685,7 +685,7 @@
 	    stripe45dWide: pdfKitDoc.pattern([1, 1, 7, 7], 6, 6, '1 w 0 1 m 7 8 l s 5 0 m 8 3 l s'),
 	    stripe45u: pdfKitDoc.pattern([1, 1, 4, 4], 3, 3, '1 w 0 4 m 4 0 l s 2 5 m 5 2 l s'),
 	    stripe45uWide: pdfKitDoc.pattern([1, 1, 7, 7], 6, 6, '1 w 0 7 m 7 0 l s 5 8 m 8 5 l s')
-	  }
+	  };
 	}
 
 
@@ -13579,8 +13579,9 @@
 
 	  var prevTop = self.writer.context().getCurrentPosition().top;
 	  applyMargins(function() {
+	    var verticalAlignBegin;
 	    if (node.verticalAlign) {
-	      var verticalAlignBegin = self.writer.beginVerticalAlign(node.verticalAlign);
+	      verticalAlignBegin = self.writer.beginVerticalAlign(node.verticalAlign);
 	    }
 
 	    var absPosition = node.absolutePosition;
@@ -13716,10 +13717,10 @@
 
 	    self.writer.context().beginColumnGroup();
 
-	    var verticalAlignCols = {};
+	    var verticalAlignCols = {}, column;
 
 	    for(var i = 0, l = columns.length; i < l; i++) {
-	      var column = columns[i];
+	      column = columns[i];
 	      var width = widths[i]._calcWidth;
 	      var leftOffset = colLeftOffset(i);
 	      var colI = i;
@@ -13732,8 +13733,9 @@
 
 	      self.writer.context().beginColumn(width, leftOffset, getEndingCell(column, i));
 	      if (!column._span) {
+	        var lastClipItem;
 	        if (height) {
-	          var lastClipItem = self.writer.beginClip(width, height);
+	          lastClipItem = self.writer.beginClip(width, height);
 	        }
 	        var ctxX = self.writer.context().x;
 	        var ctxY = self.writer.context().y;
@@ -13770,8 +13772,8 @@
 	    self.writer.context().completeColumnGroup(height);
 
 	    var rowHeight = self.writer.context().height;
-	    for(var i = 0, l = columns.length; i < l; i++) {
-	      var column = columns[i];
+	    for(i = 0, l = columns.length; i < l; i++) {
+	      column = columns[i];
 	      if (column._span) continue;
 	      if (column.verticalAlign) {
 	        var item = self.verticalAlignItemStack[verticalAlignCols[i]].begin.item;
@@ -13779,13 +13781,7 @@
 	        item.nodeHeight = column._height;
 	      }
 	      if (column.layers) {
-	        column.layers.forEach(function(layer) {
-	          if(layer.verticalAlign) {
-	            var item = self.verticalAlignItemStack[layer._verticalAlignIdx].begin.item;
-	            item.viewHeight = rowHeight;
-	            item.nodeHeight = layer._height;
-	          }
-	        });
+	        column.layers.forEach(verticalAlignLayer);
 	      }
 	    }
 	  });
@@ -13824,6 +13820,14 @@
 	    }
 
 	    return null;
+	  }
+
+	  function verticalAlignLayer(layer) {
+	    if(layer.verticalAlign) {
+	      var item = self.verticalAlignItemStack[layer._verticalAlignIdx].begin.item;
+	      item.viewHeight = self.writer.context().height;
+	      item.nodeHeight = layer._height;
+	    }
 	  }
 	};
 
@@ -14488,9 +14492,9 @@
 
 			if (typeof node.table.widths === 'string' || node.table.widths instanceof String) {
 				node.table.widths = [node.table.widths];
-				var cols = 0
-				for (var i = 0, l = node.table.body[0].length; i < l; i++) {
-					cols += node.table.body[0][i].colSpan || 1;
+				var cols = 0;
+				for (var j = 0, k = node.table.body[0].length; j < k; j++) {
+					cols += node.table.body[0][j].colSpan || 1;
 				}
 				while (node.table.widths.length < cols) {
 					node.table.widths.push(node.table.widths[node.table.widths.length - 1]);
@@ -17096,13 +17100,13 @@
 				// the current cell
 				if (colIndex < body[rowIndex].length) {
 					var cell = body[rowIndex][colIndex];
-					leftBorder = cell.border ? cell.border[0] : this.layout.defaultBorder
+					leftBorder = cell.border ? cell.border[0] : this.layout.defaultBorder;
 				}
 
 				// the cell from before column
 				if (colIndex > 0) {
-					var cell = body[rowIndex][colIndex - 1];
-					rightBorder = cell.border ? cell.border[2] : this.layout.defaultBorder
+					var cell1 = body[rowIndex][colIndex - 1];
+					rightBorder = cell1.border ? cell1.border[2] : this.layout.defaultBorder;
 				}
 
 				if (leftBorder || rightBorder) {
@@ -17232,7 +17236,7 @@
 
 	  PDFReference = __webpack_require__(45);
 
-	  PDFPage = __webpack_require__(63);
+	  PDFPage = __webpack_require__(62);
 
 	  PDFDocument = (function(superClass) {
 	    var mixin;
@@ -17294,17 +17298,17 @@
 	      return results;
 	    };
 
-	    mixin(__webpack_require__(64));
+	    mixin(__webpack_require__(63));
 
-	    mixin(__webpack_require__(67));
+	    mixin(__webpack_require__(66));
 
-	    mixin(__webpack_require__(69));
+	    mixin(__webpack_require__(68));
 
-	    mixin(__webpack_require__(89));
+	    mixin(__webpack_require__(88));
 
-	    mixin(__webpack_require__(97));
+	    mixin(__webpack_require__(95));
 
-	    mixin(__webpack_require__(102));
+	    mixin(__webpack_require__(100));
 
 	    PDFDocument.prototype.addPage = function(options) {
 	      var pages;
@@ -29207,7 +29211,51 @@
 /* 61 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(global) {// http://wiki.commonjs.org/wiki/Unit_Testing/1.0
+	/* WEBPACK VAR INJECTION */(function(global) {'use strict';
+
+	// compare and isBuffer taken from https://github.com/feross/buffer/blob/680e9e5e488f22aac27599a57dc844a6315928dd/index.js
+	// original notice:
+
+	/*!
+	 * The buffer module from node.js, for the browser.
+	 *
+	 * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
+	 * @license  MIT
+	 */
+	function compare(a, b) {
+	  if (a === b) {
+	    return 0;
+	  }
+
+	  var x = a.length;
+	  var y = b.length;
+
+	  for (var i = 0, len = Math.min(x, y); i < len; ++i) {
+	    if (a[i] !== b[i]) {
+	      x = a[i];
+	      y = b[i];
+	      break;
+	    }
+	  }
+
+	  if (x < y) {
+	    return -1;
+	  }
+	  if (y < x) {
+	    return 1;
+	  }
+	  return 0;
+	}
+	function isBuffer(b) {
+	  if (global.Buffer && typeof global.Buffer.isBuffer === 'function') {
+	    return global.Buffer.isBuffer(b);
+	  }
+	  return !!(b != null && b._isBuffer);
+	}
+
+	// based on node assert, original notice:
+
+	// http://wiki.commonjs.org/wiki/Unit_Testing/1.0
 	//
 	// THIS IS NOT TESTED NOR LIKELY TO WORK OUTSIDE V8!
 	//
@@ -29231,30 +29279,7 @@
 	// ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 	// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-	'use strict';
-
-	// UTILITY
-	function compare(bufa, bufb) {
-	  var cmpLen = Math.min(bufa, bufb);
-	  if (cmpLen <= 0) {
-	    return 0;
-	  }
-	  var i = -1;
-	  var a,b;
-	  while (++i < cmpLen) {
-	    a = bufa[i];
-	    b = bufb[i];
-	    if (a < b) {
-	      return -1;
-	    } else if (a > b) {
-	      return 1;
-	    }
-	  }
-	  return 0;
-	}
 	var util = __webpack_require__(59);
-	var Buffer = __webpack_require__(21).Buffer;
-	var BufferShim = __webpack_require__(62);
 	var hasOwn = Object.prototype.hasOwnProperty;
 	var pSlice = Array.prototype.slice;
 	var functionsHaveNames = (function () {
@@ -29264,6 +29289,9 @@
 	  return Object.prototype.toString.call(obj);
 	}
 	function isView(arrbuf) {
+	  if (isBuffer(arrbuf)) {
+	    return false;
+	  }
 	  if (typeof global.ArrayBuffer !== 'function') {
 	    return false;
 	  }
@@ -29319,25 +29347,25 @@
 	  }
 	  var stackStartFunction = options.stackStartFunction || fail;
 	  if (Error.captureStackTrace) {
-	   Error.captureStackTrace(this, stackStartFunction);
-	 } else {
-	   // non v8 browsers so we can have a stacktrace
-	   var err = new Error();
-	   if (err.stack) {
-	     var out = err.stack;
+	    Error.captureStackTrace(this, stackStartFunction);
+	  } else {
+	    // non v8 browsers so we can have a stacktrace
+	    var err = new Error();
+	    if (err.stack) {
+	      var out = err.stack;
 
-	     // try to strip useless frames
-	     var fn_name = getName(stackStartFunction);
-	     var idx = out.indexOf('\n' + fn_name);
-	     if (idx >= 0) {
-	       // once we have located the function frame
-	       // we need to strip out everything before it (and its line)
-	       var next_line = out.indexOf('\n', idx + 1);
-	       out = out.substring(next_line + 1);
-	     }
+	      // try to strip useless frames
+	      var fn_name = getName(stackStartFunction);
+	      var idx = out.indexOf('\n' + fn_name);
+	      if (idx >= 0) {
+	        // once we have located the function frame
+	        // we need to strip out everything before it (and its line)
+	        var next_line = out.indexOf('\n', idx + 1);
+	        out = out.substring(next_line + 1);
+	      }
 
-	     this.stack = out;
-	   }
+	      this.stack = out;
+	    }
 	  }
 	};
 
@@ -29437,7 +29465,7 @@
 	  // 7.1. All identical values are equivalent, as determined by ===.
 	  if (actual === expected) {
 	    return true;
-	  } else if (Buffer.isBuffer(actual) && Buffer.isBuffer(expected)) {
+	  } else if (isBuffer(actual) && isBuffer(expected)) {
 	    return compare(actual, expected) === 0;
 
 	  // 7.2. If the expected value is a Date object, the actual value is
@@ -29471,8 +29499,8 @@
 	             pToString(actual) === pToString(expected) &&
 	             !(actual instanceof Float32Array ||
 	               actual instanceof Float64Array)) {
-	    return compare(BufferShim.from(actual.buffer),
-	                   BufferShim.from(expected.buffer)) === 0;
+	    return compare(new Uint8Array(actual.buffer),
+	                   new Uint8Array(expected.buffer)) === 0;
 
 	  // 7.5 For all other Object pairs, including Array objects, equivalence is
 	  // determined by having the same number of owned properties (as verified
@@ -29480,6 +29508,8 @@
 	  // (although not necessarily the same order), equivalent values for every
 	  // corresponding key, and an identical 'prototype' property. Note: this
 	  // accounts for both named and indexed properties on Arrays.
+	  } else if (isBuffer(actual) !== isBuffer(expected)) {
+	    return false;
 	  } else {
 	    memos = memos || {actual: [], expected: []};
 
@@ -29676,121 +29706,6 @@
 
 /***/ },
 /* 62 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(global) {'use strict';
-
-	var buffer = __webpack_require__(21);
-	var Buffer = buffer.Buffer;
-	var SlowBuffer = buffer.SlowBuffer;
-	var MAX_LEN = buffer.kMaxLength || 2147483647;
-	exports.alloc = function alloc(size, fill, encoding) {
-	  if (typeof Buffer.alloc === 'function') {
-	    return Buffer.alloc(size, fill, encoding);
-	  }
-	  if (typeof encoding === 'number') {
-	    throw new TypeError('encoding must not be number');
-	  }
-	  if (typeof size !== 'number') {
-	    throw new TypeError('size must be a number');
-	  }
-	  if (size > MAX_LEN) {
-	    throw new RangeError('size is too large');
-	  }
-	  var enc = encoding;
-	  var _fill = fill;
-	  if (_fill === undefined) {
-	    enc = undefined;
-	    _fill = 0;
-	  }
-	  var buf = new Buffer(size);
-	  if (typeof _fill === 'string') {
-	    var fillBuf = new Buffer(_fill, enc);
-	    var flen = fillBuf.length;
-	    var i = -1;
-	    while (++i < size) {
-	      buf[i] = fillBuf[i % flen];
-	    }
-	  } else {
-	    buf.fill(_fill);
-	  }
-	  return buf;
-	}
-	exports.allocUnsafe = function allocUnsafe(size) {
-	  if (typeof Buffer.allocUnsafe === 'function') {
-	    return Buffer.allocUnsafe(size);
-	  }
-	  if (typeof size !== 'number') {
-	    throw new TypeError('size must be a number');
-	  }
-	  if (size > MAX_LEN) {
-	    throw new RangeError('size is too large');
-	  }
-	  return new Buffer(size);
-	}
-	exports.from = function from(value, encodingOrOffset, length) {
-	  if (typeof Buffer.from === 'function' && (!global.Uint8Array || Uint8Array.from !== Buffer.from)) {
-	    return Buffer.from(value, encodingOrOffset, length);
-	  }
-	  if (typeof value === 'number') {
-	    throw new TypeError('"value" argument must not be a number');
-	  }
-	  if (typeof value === 'string') {
-	    return new Buffer(value, encodingOrOffset);
-	  }
-	  if (typeof ArrayBuffer !== 'undefined' && value instanceof ArrayBuffer) {
-	    var offset = encodingOrOffset;
-	    if (arguments.length === 1) {
-	      return new Buffer(value);
-	    }
-	    if (typeof offset === 'undefined') {
-	      offset = 0;
-	    }
-	    var len = length;
-	    if (typeof len === 'undefined') {
-	      len = value.byteLength - offset;
-	    }
-	    if (offset >= value.byteLength) {
-	      throw new RangeError('\'offset\' is out of bounds');
-	    }
-	    if (len > value.byteLength - offset) {
-	      throw new RangeError('\'length\' is out of bounds');
-	    }
-	    return new Buffer(value.slice(offset, offset + len));
-	  }
-	  if (Buffer.isBuffer(value)) {
-	    var out = new Buffer(value.length);
-	    value.copy(out, 0, 0, value.length);
-	    return out;
-	  }
-	  if (value) {
-	    if (Array.isArray(value) || (typeof ArrayBuffer !== 'undefined' && value.buffer instanceof ArrayBuffer) || 'length' in value) {
-	      return new Buffer(value);
-	    }
-	    if (value.type === 'Buffer' && Array.isArray(value.data)) {
-	      return new Buffer(value.data);
-	    }
-	  }
-
-	  throw new TypeError('First argument must be a string, Buffer, ' + 'ArrayBuffer, Array, or array-like object.');
-	}
-	exports.allocUnsafeSlow = function allocUnsafeSlow(size) {
-	  if (typeof Buffer.allocUnsafeSlow === 'function') {
-	    return Buffer.allocUnsafeSlow(size);
-	  }
-	  if (typeof size !== 'number') {
-	    throw new TypeError('size must be a number');
-	  }
-	  if (size >= MAX_LEN) {
-	    throw new RangeError('size is too large');
-	  }
-	  return new SlowBuffer(size);
-	}
-
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
-
-/***/ },
-/* 63 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -29974,16 +29889,16 @@
 
 
 /***/ },
-/* 64 */
+/* 63 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var PDFGradient, PDFLinearGradient, PDFPattern, PDFRadialGradient, namedColors, ref;
 
-	  ref = __webpack_require__(65), PDFGradient = ref.PDFGradient, PDFLinearGradient = ref.PDFLinearGradient, PDFRadialGradient = ref.PDFRadialGradient;
+	  ref = __webpack_require__(64), PDFGradient = ref.PDFGradient, PDFLinearGradient = ref.PDFLinearGradient, PDFRadialGradient = ref.PDFRadialGradient;
 
-	  PDFPattern = __webpack_require__(66).PDFPattern;
+	  PDFPattern = __webpack_require__(65).PDFPattern;
 
 	  module.exports = {
 	    initColor: function() {
@@ -30337,7 +30252,7 @@
 
 
 /***/ },
-/* 65 */
+/* 64 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -30573,7 +30488,7 @@
 
 
 /***/ },
-/* 66 */
+/* 65 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -30669,7 +30584,7 @@
 
 
 /***/ },
-/* 67 */
+/* 66 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -30677,7 +30592,7 @@
 	  var KAPPA, SVGPath,
 	    slice = [].slice;
 
-	  SVGPath = __webpack_require__(68);
+	  SVGPath = __webpack_require__(67);
 
 	  KAPPA = 4.0 * ((Math.sqrt(2) - 1.0) / 3.0);
 
@@ -30920,7 +30835,7 @@
 
 
 /***/ },
-/* 68 */
+/* 67 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -31299,14 +31214,14 @@
 
 
 /***/ },
-/* 69 */
+/* 68 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var PDFFont;
 
-	  PDFFont = __webpack_require__(70);
+	  PDFFont = __webpack_require__(69);
 
 	  module.exports = {
 	    initFonts: function() {
@@ -31374,7 +31289,7 @@
 
 
 /***/ },
-/* 70 */
+/* 69 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer, __dirname) {// Generated by CoffeeScript 1.10.0
@@ -31387,11 +31302,11 @@
 	(function() {
 	  var AFMFont, PDFFont, Subset, TTFFont, fs;
 
-	  TTFFont = __webpack_require__(71);
+	  TTFFont = __webpack_require__(70);
 
-	  AFMFont = __webpack_require__(87);
+	  AFMFont = __webpack_require__(86);
 
-	  Subset = __webpack_require__(88);
+	  Subset = __webpack_require__(87);
 
 	  fs = __webpack_require__(43);
 
@@ -31674,7 +31589,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(21).Buffer, "/"))
 
 /***/ },
-/* 71 */
+/* 70 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -31683,31 +31598,31 @@
 
 	  fs = __webpack_require__(43);
 
-	  Data = __webpack_require__(72);
+	  Data = __webpack_require__(71);
 
-	  DFont = __webpack_require__(73);
+	  DFont = __webpack_require__(72);
 
-	  Directory = __webpack_require__(74);
+	  Directory = __webpack_require__(73);
 
-	  NameTable = __webpack_require__(75);
+	  NameTable = __webpack_require__(74);
 
-	  HeadTable = __webpack_require__(78);
+	  HeadTable = __webpack_require__(77);
 
-	  CmapTable = __webpack_require__(79);
+	  CmapTable = __webpack_require__(78);
 
-	  HmtxTable = __webpack_require__(80);
+	  HmtxTable = __webpack_require__(79);
 
-	  HheaTable = __webpack_require__(81);
+	  HheaTable = __webpack_require__(80);
 
-	  MaxpTable = __webpack_require__(82);
+	  MaxpTable = __webpack_require__(81);
 
-	  PostTable = __webpack_require__(83);
+	  PostTable = __webpack_require__(82);
 
-	  OS2Table = __webpack_require__(84);
+	  OS2Table = __webpack_require__(83);
 
-	  LocaTable = __webpack_require__(85);
+	  LocaTable = __webpack_require__(84);
 
-	  GlyfTable = __webpack_require__(86);
+	  GlyfTable = __webpack_require__(85);
 
 	  TTFFont = (function() {
 	    TTFFont.open = function(filename, name) {
@@ -31808,7 +31723,7 @@
 
 
 /***/ },
-/* 72 */
+/* 71 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32006,7 +31921,7 @@
 
 
 /***/ },
-/* 73 */
+/* 72 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32015,11 +31930,11 @@
 
 	  fs = __webpack_require__(43);
 
-	  Data = __webpack_require__(72);
+	  Data = __webpack_require__(71);
 
-	  Directory = __webpack_require__(74);
+	  Directory = __webpack_require__(73);
 
-	  NameTable = __webpack_require__(75);
+	  NameTable = __webpack_require__(74);
 
 	  DFont = (function() {
 	    DFont.open = function(filename) {
@@ -32119,7 +32034,7 @@
 
 
 /***/ },
-/* 74 */
+/* 73 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.10.0
@@ -32127,7 +32042,7 @@
 	  var Data, Directory,
 	    slice = [].slice;
 
-	  Data = __webpack_require__(72);
+	  Data = __webpack_require__(71);
 
 	  Directory = (function() {
 	    var checksum;
@@ -32217,7 +32132,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(21).Buffer))
 
 /***/ },
-/* 75 */
+/* 74 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32226,11 +32141,11 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(76);
+	  Table = __webpack_require__(75);
 
-	  Data = __webpack_require__(72);
+	  Data = __webpack_require__(71);
 
-	  utils = __webpack_require__(77);
+	  utils = __webpack_require__(76);
 
 	  NameTable = (function(superClass) {
 	    var subsetTag;
@@ -32366,7 +32281,7 @@
 
 
 /***/ },
-/* 76 */
+/* 75 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32407,7 +32322,7 @@
 
 
 /***/ },
-/* 77 */
+/* 76 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32491,7 +32406,7 @@
 
 
 /***/ },
-/* 78 */
+/* 77 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32500,9 +32415,9 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(76);
+	  Table = __webpack_require__(75);
 
-	  Data = __webpack_require__(72);
+	  Data = __webpack_require__(71);
 
 	  HeadTable = (function(superClass) {
 	    extend(HeadTable, superClass);
@@ -32567,7 +32482,7 @@
 
 
 /***/ },
-/* 79 */
+/* 78 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32576,9 +32491,9 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(76);
+	  Table = __webpack_require__(75);
 
-	  Data = __webpack_require__(72);
+	  Data = __webpack_require__(71);
 
 	  CmapTable = (function(superClass) {
 	    extend(CmapTable, superClass);
@@ -32863,7 +32778,7 @@
 
 
 /***/ },
-/* 80 */
+/* 79 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32872,9 +32787,9 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(76);
+	  Table = __webpack_require__(75);
 
-	  Data = __webpack_require__(72);
+	  Data = __webpack_require__(71);
 
 	  HmtxTable = (function(superClass) {
 	    extend(HmtxTable, superClass);
@@ -32955,7 +32870,7 @@
 
 
 /***/ },
-/* 81 */
+/* 80 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -32964,9 +32879,9 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(76);
+	  Table = __webpack_require__(75);
 
-	  Data = __webpack_require__(72);
+	  Data = __webpack_require__(71);
 
 	  HheaTable = (function(superClass) {
 	    extend(HheaTable, superClass);
@@ -33027,7 +32942,7 @@
 
 
 /***/ },
-/* 82 */
+/* 81 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -33036,9 +32951,9 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(76);
+	  Table = __webpack_require__(75);
 
-	  Data = __webpack_require__(72);
+	  Data = __webpack_require__(71);
 
 	  MaxpTable = (function(superClass) {
 	    extend(MaxpTable, superClass);
@@ -33099,7 +33014,7 @@
 
 
 /***/ },
-/* 83 */
+/* 82 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -33108,9 +33023,9 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(76);
+	  Table = __webpack_require__(75);
 
-	  Data = __webpack_require__(72);
+	  Data = __webpack_require__(71);
 
 	  PostTable = (function(superClass) {
 	    var POSTSCRIPT_GLYPHS;
@@ -33241,7 +33156,7 @@
 
 
 /***/ },
-/* 84 */
+/* 83 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -33250,7 +33165,7 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(76);
+	  Table = __webpack_require__(75);
 
 	  OS2Table = (function(superClass) {
 	    extend(OS2Table, superClass);
@@ -33338,7 +33253,7 @@
 
 
 /***/ },
-/* 85 */
+/* 84 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -33347,9 +33262,9 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(76);
+	  Table = __webpack_require__(75);
 
-	  Data = __webpack_require__(72);
+	  Data = __webpack_require__(71);
 
 	  LocaTable = (function(superClass) {
 	    extend(LocaTable, superClass);
@@ -33431,7 +33346,7 @@
 
 
 /***/ },
-/* 86 */
+/* 85 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -33441,9 +33356,9 @@
 	    hasProp = {}.hasOwnProperty,
 	    slice = [].slice;
 
-	  Table = __webpack_require__(76);
+	  Table = __webpack_require__(75);
 
-	  Data = __webpack_require__(72);
+	  Data = __webpack_require__(71);
 
 	  GlyfTable = (function(superClass) {
 	    extend(GlyfTable, superClass);
@@ -33597,7 +33512,7 @@
 
 
 /***/ },
-/* 87 */
+/* 86 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -33741,7 +33656,7 @@
 
 
 /***/ },
-/* 88 */
+/* 87 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -33749,9 +33664,9 @@
 	  var CmapTable, Subset, utils,
 	    indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
-	  CmapTable = __webpack_require__(79);
+	  CmapTable = __webpack_require__(78);
 
-	  utils = __webpack_require__(77);
+	  utils = __webpack_require__(76);
 
 	  Subset = (function() {
 	    function Subset(font) {
@@ -33904,14 +33819,14 @@
 
 
 /***/ },
-/* 89 */
+/* 88 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var LineWrapper;
 
-	  LineWrapper = __webpack_require__(90);
+	  LineWrapper = __webpack_require__(89);
 
 	  module.exports = {
 	    initText: function() {
@@ -34218,7 +34133,7 @@
 
 
 /***/ },
-/* 90 */
+/* 89 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -34227,9 +34142,9 @@
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  EventEmitter = __webpack_require__(91).EventEmitter;
+	  EventEmitter = __webpack_require__(26).EventEmitter;
 
-	  LineBreaker = __webpack_require__(92);
+	  LineBreaker = __webpack_require__(90);
 
 	  LineWrapper = (function(superClass) {
 	    extend(LineWrapper, superClass);
@@ -34476,324 +34391,20 @@
 
 
 /***/ },
-/* 91 */
-/***/ function(module, exports) {
-
-	// Copyright Joyent, Inc. and other Node contributors.
-	//
-	// Permission is hereby granted, free of charge, to any person obtaining a
-	// copy of this software and associated documentation files (the
-	// "Software"), to deal in the Software without restriction, including
-	// without limitation the rights to use, copy, modify, merge, publish,
-	// distribute, sublicense, and/or sell copies of the Software, and to permit
-	// persons to whom the Software is furnished to do so, subject to the
-	// following conditions:
-	//
-	// The above copyright notice and this permission notice shall be included
-	// in all copies or substantial portions of the Software.
-	//
-	// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-	// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-	// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-	// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-	// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-	// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-	// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-	function EventEmitter() {
-	  this._events = this._events || {};
-	  this._maxListeners = this._maxListeners || undefined;
-	}
-	module.exports = EventEmitter;
-
-	// Backwards-compat with node 0.10.x
-	EventEmitter.EventEmitter = EventEmitter;
-
-	EventEmitter.prototype._events = undefined;
-	EventEmitter.prototype._maxListeners = undefined;
-
-	// By default EventEmitters will print a warning if more than 10 listeners are
-	// added to it. This is a useful default which helps finding memory leaks.
-	EventEmitter.defaultMaxListeners = 10;
-
-	// Obviously not all Emitters should be limited to 10. This function allows
-	// that to be increased. Set to zero for unlimited.
-	EventEmitter.prototype.setMaxListeners = function(n) {
-	  if (!isNumber(n) || n < 0 || isNaN(n))
-	    throw TypeError('n must be a positive number');
-	  this._maxListeners = n;
-	  return this;
-	};
-
-	EventEmitter.prototype.emit = function(type) {
-	  var er, handler, len, args, i, listeners;
-
-	  if (!this._events)
-	    this._events = {};
-
-	  // If there is no 'error' event listener then throw.
-	  if (type === 'error') {
-	    if (!this._events.error ||
-	        (isObject(this._events.error) && !this._events.error.length)) {
-	      er = arguments[1];
-	      if (er instanceof Error) {
-	        throw er; // Unhandled 'error' event
-	      }
-	      throw TypeError('Uncaught, unspecified "error" event.');
-	    }
-	  }
-
-	  handler = this._events[type];
-
-	  if (isUndefined(handler))
-	    return false;
-
-	  if (isFunction(handler)) {
-	    switch (arguments.length) {
-	      // fast cases
-	      case 1:
-	        handler.call(this);
-	        break;
-	      case 2:
-	        handler.call(this, arguments[1]);
-	        break;
-	      case 3:
-	        handler.call(this, arguments[1], arguments[2]);
-	        break;
-	      // slower
-	      default:
-	        args = Array.prototype.slice.call(arguments, 1);
-	        handler.apply(this, args);
-	    }
-	  } else if (isObject(handler)) {
-	    args = Array.prototype.slice.call(arguments, 1);
-	    listeners = handler.slice();
-	    len = listeners.length;
-	    for (i = 0; i < len; i++)
-	      listeners[i].apply(this, args);
-	  }
-
-	  return true;
-	};
-
-	EventEmitter.prototype.addListener = function(type, listener) {
-	  var m;
-
-	  if (!isFunction(listener))
-	    throw TypeError('listener must be a function');
-
-	  if (!this._events)
-	    this._events = {};
-
-	  // To avoid recursion in the case that type === "newListener"! Before
-	  // adding it to the listeners, first emit "newListener".
-	  if (this._events.newListener)
-	    this.emit('newListener', type,
-	              isFunction(listener.listener) ?
-	              listener.listener : listener);
-
-	  if (!this._events[type])
-	    // Optimize the case of one listener. Don't need the extra array object.
-	    this._events[type] = listener;
-	  else if (isObject(this._events[type]))
-	    // If we've already got an array, just append.
-	    this._events[type].push(listener);
-	  else
-	    // Adding the second element, need to change to array.
-	    this._events[type] = [this._events[type], listener];
-
-	  // Check for listener leak
-	  if (isObject(this._events[type]) && !this._events[type].warned) {
-	    if (!isUndefined(this._maxListeners)) {
-	      m = this._maxListeners;
-	    } else {
-	      m = EventEmitter.defaultMaxListeners;
-	    }
-
-	    if (m && m > 0 && this._events[type].length > m) {
-	      this._events[type].warned = true;
-	      console.error('(node) warning: possible EventEmitter memory ' +
-	                    'leak detected. %d listeners added. ' +
-	                    'Use emitter.setMaxListeners() to increase limit.',
-	                    this._events[type].length);
-	      if (typeof console.trace === 'function') {
-	        // not supported in IE 10
-	        console.trace();
-	      }
-	    }
-	  }
-
-	  return this;
-	};
-
-	EventEmitter.prototype.on = EventEmitter.prototype.addListener;
-
-	EventEmitter.prototype.once = function(type, listener) {
-	  if (!isFunction(listener))
-	    throw TypeError('listener must be a function');
-
-	  var fired = false;
-
-	  function g() {
-	    this.removeListener(type, g);
-
-	    if (!fired) {
-	      fired = true;
-	      listener.apply(this, arguments);
-	    }
-	  }
-
-	  g.listener = listener;
-	  this.on(type, g);
-
-	  return this;
-	};
-
-	// emits a 'removeListener' event iff the listener was removed
-	EventEmitter.prototype.removeListener = function(type, listener) {
-	  var list, position, length, i;
-
-	  if (!isFunction(listener))
-	    throw TypeError('listener must be a function');
-
-	  if (!this._events || !this._events[type])
-	    return this;
-
-	  list = this._events[type];
-	  length = list.length;
-	  position = -1;
-
-	  if (list === listener ||
-	      (isFunction(list.listener) && list.listener === listener)) {
-	    delete this._events[type];
-	    if (this._events.removeListener)
-	      this.emit('removeListener', type, listener);
-
-	  } else if (isObject(list)) {
-	    for (i = length; i-- > 0;) {
-	      if (list[i] === listener ||
-	          (list[i].listener && list[i].listener === listener)) {
-	        position = i;
-	        break;
-	      }
-	    }
-
-	    if (position < 0)
-	      return this;
-
-	    if (list.length === 1) {
-	      list.length = 0;
-	      delete this._events[type];
-	    } else {
-	      list.splice(position, 1);
-	    }
-
-	    if (this._events.removeListener)
-	      this.emit('removeListener', type, listener);
-	  }
-
-	  return this;
-	};
-
-	EventEmitter.prototype.removeAllListeners = function(type) {
-	  var key, listeners;
-
-	  if (!this._events)
-	    return this;
-
-	  // not listening for removeListener, no need to emit
-	  if (!this._events.removeListener) {
-	    if (arguments.length === 0)
-	      this._events = {};
-	    else if (this._events[type])
-	      delete this._events[type];
-	    return this;
-	  }
-
-	  // emit removeListener for all listeners on all events
-	  if (arguments.length === 0) {
-	    for (key in this._events) {
-	      if (key === 'removeListener') continue;
-	      this.removeAllListeners(key);
-	    }
-	    this.removeAllListeners('removeListener');
-	    this._events = {};
-	    return this;
-	  }
-
-	  listeners = this._events[type];
-
-	  if (isFunction(listeners)) {
-	    this.removeListener(type, listeners);
-	  } else if (listeners) {
-	    // LIFO order
-	    while (listeners.length)
-	      this.removeListener(type, listeners[listeners.length - 1]);
-	  }
-	  delete this._events[type];
-
-	  return this;
-	};
-
-	EventEmitter.prototype.listeners = function(type) {
-	  var ret;
-	  if (!this._events || !this._events[type])
-	    ret = [];
-	  else if (isFunction(this._events[type]))
-	    ret = [this._events[type]];
-	  else
-	    ret = this._events[type].slice();
-	  return ret;
-	};
-
-	EventEmitter.prototype.listenerCount = function(type) {
-	  if (this._events) {
-	    var evlistener = this._events[type];
-
-	    if (isFunction(evlistener))
-	      return 1;
-	    else if (evlistener)
-	      return evlistener.length;
-	  }
-	  return 0;
-	};
-
-	EventEmitter.listenerCount = function(emitter, type) {
-	  return emitter.listenerCount(type);
-	};
-
-	function isFunction(arg) {
-	  return typeof arg === 'function';
-	}
-
-	function isNumber(arg) {
-	  return typeof arg === 'number';
-	}
-
-	function isObject(arg) {
-	  return typeof arg === 'object' && arg !== null;
-	}
-
-	function isUndefined(arg) {
-	  return arg === void 0;
-	}
-
-
-/***/ },
-/* 92 */
+/* 90 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.7.1
 	(function() {
 	  var AI, AL, BA, BK, CB, CI_BRK, CJ, CP_BRK, CR, DI_BRK, ID, IN_BRK, LF, LineBreaker, NL, NS, PR_BRK, SA, SG, SP, UnicodeTrie, WJ, XX, characterClasses, classTrie, pairTable, _ref, _ref1;
 
-	  UnicodeTrie = __webpack_require__(93);
+	  UnicodeTrie = __webpack_require__(91);
 
-	  classTrie = new UnicodeTrie(__webpack_require__(94));
+	  classTrie = new UnicodeTrie(__webpack_require__(92));
 
-	  _ref = __webpack_require__(95), BK = _ref.BK, CR = _ref.CR, LF = _ref.LF, NL = _ref.NL, CB = _ref.CB, BA = _ref.BA, SP = _ref.SP, WJ = _ref.WJ, SP = _ref.SP, BK = _ref.BK, LF = _ref.LF, NL = _ref.NL, AI = _ref.AI, AL = _ref.AL, SA = _ref.SA, SG = _ref.SG, XX = _ref.XX, CJ = _ref.CJ, ID = _ref.ID, NS = _ref.NS, characterClasses = _ref.characterClasses;
+	  _ref = __webpack_require__(93), BK = _ref.BK, CR = _ref.CR, LF = _ref.LF, NL = _ref.NL, CB = _ref.CB, BA = _ref.BA, SP = _ref.SP, WJ = _ref.WJ, SP = _ref.SP, BK = _ref.BK, LF = _ref.LF, NL = _ref.NL, AI = _ref.AI, AL = _ref.AL, SA = _ref.SA, SG = _ref.SG, XX = _ref.XX, CJ = _ref.CJ, ID = _ref.ID, NS = _ref.NS, characterClasses = _ref.characterClasses;
 
-	  _ref1 = __webpack_require__(96), DI_BRK = _ref1.DI_BRK, IN_BRK = _ref1.IN_BRK, CI_BRK = _ref1.CI_BRK, CP_BRK = _ref1.CP_BRK, PR_BRK = _ref1.PR_BRK, pairTable = _ref1.pairTable;
+	  _ref1 = __webpack_require__(94), DI_BRK = _ref1.DI_BRK, IN_BRK = _ref1.IN_BRK, CI_BRK = _ref1.CI_BRK, CP_BRK = _ref1.CP_BRK, PR_BRK = _ref1.PR_BRK, pairTable = _ref1.pairTable;
 
 	  LineBreaker = (function() {
 	    var Break, mapClass, mapFirst;
@@ -34941,7 +34552,7 @@
 
 
 /***/ },
-/* 93 */
+/* 91 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.7.1
@@ -35033,7 +34644,7 @@
 
 
 /***/ },
-/* 94 */
+/* 92 */
 /***/ function(module, exports) {
 
 	module.exports = {
@@ -67660,7 +67271,7 @@
 	};
 
 /***/ },
-/* 95 */
+/* 93 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.7.1
@@ -67751,7 +67362,7 @@
 
 
 /***/ },
-/* 96 */
+/* 94 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.7.1
@@ -67774,14 +67385,14 @@
 
 
 /***/ },
-/* 97 */
+/* 95 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var PDFImage;
 
-	  PDFImage = __webpack_require__(98);
+	  PDFImage = __webpack_require__(96);
 
 	  module.exports = {
 	    initImages: function() {
@@ -67863,7 +67474,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(21).Buffer))
 
 /***/ },
-/* 98 */
+/* 96 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.10.0
@@ -67878,11 +67489,11 @@
 
 	  fs = __webpack_require__(43);
 
-	  Data = __webpack_require__(72);
+	  Data = __webpack_require__(71);
 
-	  JPEG = __webpack_require__(99);
+	  JPEG = __webpack_require__(97);
 
-	  PNG = __webpack_require__(100);
+	  PNG = __webpack_require__(98);
 
 	  PDFImage = (function() {
 	    function PDFImage() {}
@@ -67923,7 +67534,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(21).Buffer))
 
 /***/ },
-/* 99 */
+/* 97 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -68007,7 +67618,7 @@
 
 
 /***/ },
-/* 100 */
+/* 98 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.10.0
@@ -68016,7 +67627,7 @@
 
 	  zlib = __webpack_require__(46);
 
-	  PNG = __webpack_require__(101);
+	  PNG = __webpack_require__(99);
 
 	  PNGImage = (function() {
 	    function PNGImage(data, label) {
@@ -68172,7 +67783,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(21).Buffer))
 
 /***/ },
-/* 101 */
+/* 99 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.4.0
@@ -68496,7 +68107,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(21).Buffer))
 
 /***/ },
-/* 102 */
+/* 100 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -68635,7 +68246,7 @@
 
 
 /***/ },
-/* 103 */
+/* 101 */
 /***/ function(module, exports) {
 
 	module.exports = {
@@ -68693,14 +68304,14 @@
 
 
 /***/ },
-/* 104 */
+/* 102 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {/* jslint node: true */
 	'use strict';
 
 	var pdfKit = __webpack_require__(20);
-	var PDFImage = __webpack_require__(98);
+	var PDFImage = __webpack_require__(96);
 
 	function ImageMeasure(pdfDoc, imageDictionary) {
 		this.pdfDoc = pdfDoc;
@@ -68741,7 +68352,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(21).Buffer))
 
 /***/ },
-/* 105 */
+/* 103 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
@@ -68897,7 +68508,7 @@
 
 
 /***/ },
-/* 106 */
+/* 104 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/* FileSaver.js
@@ -69151,7 +68762,7 @@
 
 	if (typeof module !== "undefined" && module.exports) {
 	  module.exports.saveAs = saveAs;
-	} else if (("function" !== "undefined" && __webpack_require__(107) !== null) && (__webpack_require__(108) != null)) {
+	} else if (("function" !== "undefined" && __webpack_require__(105) !== null) && (__webpack_require__(106) != null)) {
 	  !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = function() {
 	    return saveAs;
 	  }.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
@@ -69159,14 +68770,14 @@
 
 
 /***/ },
-/* 107 */
+/* 105 */
 /***/ function(module, exports) {
 
 	module.exports = function() { throw new Error("define cannot be used indirect"); };
 
 
 /***/ },
-/* 108 */
+/* 106 */
 /***/ function(module, exports) {
 
 	/* WEBPACK VAR INJECTION */(function(__webpack_amd_options__) {module.exports = __webpack_amd_options__;

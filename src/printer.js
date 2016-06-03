@@ -448,7 +448,7 @@ function registerPatterns(pdfKitDoc) {
     stripe45dWide: pdfKitDoc.pattern([1, 1, 7, 7], 6, 6, '1 w 0 1 m 7 8 l s 5 0 m 8 3 l s'),
     stripe45u: pdfKitDoc.pattern([1, 1, 4, 4], 3, 3, '1 w 0 4 m 4 0 l s 2 5 m 5 2 l s'),
     stripe45uWide: pdfKitDoc.pattern([1, 1, 7, 7], 6, 6, '1 w 0 7 m 7 0 l s 5 8 m 8 5 l s')
-  }
+  };
 }
 
 

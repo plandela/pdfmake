@@ -472,9 +472,9 @@ DocMeasure.prototype.measureTable = function (node) {
 
 		if (typeof node.table.widths === 'string' || node.table.widths instanceof String) {
 			node.table.widths = [node.table.widths];
-			var cols = 0
-			for (var i = 0, l = node.table.body[0].length; i < l; i++) {
-				cols += node.table.body[0][i].colSpan || 1;
+			var cols = 0;
+			for (var j = 0, k = node.table.body[0].length; j < k; j++) {
+				cols += node.table.body[0][j].colSpan || 1;
 			}
 			while (node.table.widths.length < cols) {
 				node.table.widths.push(node.table.widths[node.table.widths.length - 1]);

@@ -1,6 +1,7 @@
 // initial version, doesn't bundle vfs_fonts yet
 
 var gulp = require('gulp');
+var grunt = require('grunt');
 var webpack = require('webpack-stream');
 var gutil = require('gulp-util');
 var uglify = require('gulp-uglify');
@@ -22,7 +23,7 @@ var uglifyOptions = {
 };
 
 
-gulp.task('default', [/*'lint',*/ 'test', 'build']);
+gulp.task('default', [/*'lint',*/ 'test', 'build', 'buildFonts']);
 gulp.task('build', function() {
 	return gulp.src('src/browser-extensions/pdfMake.js')
 		.pipe(webpack(require('./webpack.config.js'), null, reportWebPackErrors))
@@ -32,6 +33,10 @@ gulp.task('build', function() {
 		.pipe(rename({ extname: '.min.js' }))
 		.pipe(sourcemaps.write('./'))
 		.pipe(gulp.dest('build'));
+});
+
+gulp.task('buildFonts', function(done) {
+  grunt.tasks(['buildFonts'], {}, function () {done();});
 });
 
 function reportWebPackErrors(err, stats) {

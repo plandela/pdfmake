@@ -61,7 +61,7 @@ Document.prototype.open = function (message) {
 			try {
 				blob = new Blob([result], { type: 'application/pdf' });
 			} catch (e) {
-				// Old browser which can't handle it without making it an byte array (ie10) 
+				// Old browser which can't handle it without making it an byte array (ie10)
 				if (e.name == "InvalidStateError") {
 					var byteArray = new Uint8Array(result);
 					blob = new Blob([byteArray.buffer], { type: 'application/pdf' });
@@ -89,7 +89,7 @@ Document.prototype.print = function () {
 		try {
 			blob = new Blob([result], { type: 'application/pdf' });
 		} catch (e) {
-			// Old browser which can't handle it without making it an byte array (ie10) 
+			// Old browser which can't handle it without making it an byte array (ie10)
 			if (e.name == "InvalidStateError") {
 				var byteArray = new Uint8Array(result);
 				blob = new Blob([byteArray.buffer], { type: 'application/pdf' });
@@ -131,7 +131,7 @@ Document.prototype.download = function (defaultFileName, cb) {
 			blob = new Blob([result], { type: 'application/pdf' });
 		}
 		catch (e) {
-			// Old browser which can't handle it without making it an byte array (ie10) 
+			// Old browser which can't handle it without making it an byte array (ie10)
 			if (e.name == "InvalidStateError") {
 				var byteArray = new Uint8Array(result);
 				blob = new Blob([byteArray.buffer], { type: 'application/pdf' });
@@ -174,5 +174,13 @@ module.exports = {
 	createPdf: function (docDefinition) {
 		if (canCreatePdf())
 			return new Document(docDefinition, window.pdfMake.fonts, window.pdfMake.vfs);
+	},
+	getPageSize: function (docDefinition) {
+		var pageSize = PdfPrinter.fixPageSize(docDefinition.pageSize, docDefinition.pageOrientation);
+		var pageMargins = PdfPrinter.fixPageMargins(docDefinition.pageMargins);
+		return {
+			width: pageSize.width - pageMargins.left - pageMargins.right,
+			height: pageSize.height - pageMargins.top - pageMargins.bottom
+		};
 	}
 };

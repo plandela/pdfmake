@@ -83,13 +83,7 @@ function PdfPrinter(fontDescriptors) {
 PdfPrinter.prototype.createPdfKitDocument = function(docDefinition, options) {
 	options = options || {};
 
-	var pageSize = pageSize2widthAndHeight(docDefinition.pageSize || 'a4');
-
-  if(docDefinition.pageOrientation === 'landscape') {
-    pageSize = { width: pageSize.height, height: pageSize.width};
-  }
-	pageSize.orientation = docDefinition.pageOrientation === 'landscape' ? docDefinition.pageOrientation : 'portrait';
-
+  var pageSize = PdfPrinter.fixPageSize(docDefinition.pageSize, docDefinition.pageOrientation);
 	this.pdfKitDoc = new PdfKit({ size: [ pageSize.width, pageSize.height ], compress: false});
 	this.pdfKitDoc.info.Producer = 'pdfmake';
 	this.pdfKitDoc.info.Creator = 'pdfmake';
@@ -111,7 +105,7 @@ PdfPrinter.prototype.createPdfKitDocument = function(docDefinition, options) {
 
 	var builder = new LayoutBuilder(
 		pageSize,
-		fixPageMargins(docDefinition.pageMargins || 40),
+		PdfPrinter.fixPageMargins(docDefinition.pageMargins || 40),
         new ImageMeasure(this.pdfKitDoc, docDefinition.images));
 
   registerDefaultTableLayouts(builder);
@@ -135,21 +129,29 @@ PdfPrinter.prototype.createPdfKitDocument = function(docDefinition, options) {
 	return this.pdfKitDoc;
 };
 
-function fixPageMargins(margin) {
-    if (!margin) return null;
+PdfPrinter.fixPageSize = function(pageSize, pageOrientation) {
+  var size = pageSize2widthAndHeight(pageSize || 'a4');
+  if(pageOrientation === 'landscape') {
+    size = { width: size.height, height: size.width};
+  }
+  size.orientation = pageOrientation === 'landscape' ? pageOrientation : 'portrait';
+  return size;
+};
 
-    if (typeof margin === 'number' || margin instanceof Number) {
-        margin = { left: margin, right: margin, top: margin, bottom: margin };
-    } else if (margin instanceof Array) {
-        if (margin.length === 2) {
-            margin = { left: margin[0], top: margin[1], right: margin[0], bottom: margin[1] };
-        } else if (margin.length === 4) {
-            margin = { left: margin[0], top: margin[1], right: margin[2], bottom: margin[3] };
-        } else throw 'Invalid pageMargins definition';
-    }
+PdfPrinter.fixPageMargins = function(margin) {
+  if (!margin) return null;
 
-    return margin;
-}
+  if (typeof margin === 'number' || margin instanceof Number) {
+    margin = { left: margin, right: margin, top: margin, bottom: margin };
+  } else if (margin instanceof Array) {
+    if (margin.length === 2) {
+      margin = { left: margin[0], top: margin[1], right: margin[0], bottom: margin[1] };
+    } else if (margin.length === 4) {
+      margin = { left: margin[0], top: margin[1], right: margin[2], bottom: margin[3] };
+    } else throw 'Invalid pageMargins definition';
+  }
+  return margin;
+};
 
 function registerDefaultTableLayouts(layoutBuilder) {
   layoutBuilder.registerTableLayouts({

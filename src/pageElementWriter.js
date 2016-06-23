@@ -54,6 +54,10 @@ PageElementWriter.prototype.endClip = function() {
 	return this.writer.endClip();
 };
 
+PageElementWriter.prototype.removeBeginClip = function(item) {
+	return this.writer.removeBeginClip(item);
+};
+
 PageElementWriter.prototype.beginVerticalAlign = function(verticalAlign) {
 	return this.writer.beginVerticalAlign(verticalAlign);
 };
@@ -74,9 +78,9 @@ PageElementWriter.prototype.addFragment = function(fragment, useBlockXOffset, us
 };
 
 PageElementWriter.prototype.moveToNextPage = function(pageOrientation) {
-	
+
 	var nextPage = this.writer.context.moveToNextPage(pageOrientation);
-	
+
   if (nextPage.newPageCreated) {
 		this.repeatables.forEach(function(rep) {
 			this.writer.addFragment(rep, true);

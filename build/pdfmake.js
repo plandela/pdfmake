@@ -13743,24 +13743,22 @@
 
 	      self.writer.context().beginColumn(width, leftOffset, getEndingCell(column, i));
 	      if (!column._span) {
-	        var lastClipItem;
-	        lastClipItem = self.writer.beginClip(width, height);
+	        var lastClipItem = self.writer.beginClip(width, height);
 	        var ctxX = self.writer.context().x;
 	        var ctxY = self.writer.context().y;
 	        self.processNode(column);
 	        verticalAlignCols[colI] = self.verticalAlignItemStack.length - 1;
 	        addAll(positions, column.positions);
-	        if (column._height > height || column._maxWidth > width) {
+	        if (column._height > height || column._minWidth > width) {
 	          if(!lastClipItem.item.height) {
 	            lastClipItem.item.height = column._height;
 	          }
 	          if(!lastClipItem.item.width) {
-	            lastClipItem.item.width = column._maxWidth;
+	            lastClipItem.item.width = column._minWidth;
 	          }
 	          self.writer.endClip();
 	        } else {
-	          // optimize by removing unnecessary clipping; this is ugly
-	          lastClipItem.type = '';
+	          self.writer.removeBeginClip(lastClipItem);
 	        }
 	        if (column.pattern) {
 	          self.writer.addVector({
@@ -16315,6 +16313,10 @@
 		return this.writer.endClip();
 	};
 
+	PageElementWriter.prototype.removeBeginClip = function(item) {
+		return this.writer.removeBeginClip(item);
+	};
+
 	PageElementWriter.prototype.beginVerticalAlign = function(verticalAlign) {
 		return this.writer.beginVerticalAlign(verticalAlign);
 	};
@@ -16335,9 +16337,9 @@
 	};
 
 	PageElementWriter.prototype.moveToNextPage = function(pageOrientation) {
-		
+
 		var nextPage = this.writer.context.moveToNextPage(pageOrientation);
-		
+
 	  if (nextPage.newPageCreated) {
 			this.repeatables.forEach(function(rep) {
 				this.writer.addFragment(rep, true);
@@ -16684,6 +16686,20 @@
 		};
 		page.items.push(item);
 		return item;
+	};
+
+	ElementWriter.prototype.removeBeginClip = function (item) {
+		var ctx = this.context;
+		for (var i = ctx.pages.length - 1; i >= 0; i--) {
+			var index = ctx.pages[i].items.indexOf(item);
+			if (index >= 0) {
+				ctx.pages[i].items.splice(index, 1);
+				break;
+			}
+		}
+		if (i < 0) {
+			console.log('WARNING: could not removeBeginClip!');
+		}
 	};
 
 	ElementWriter.prototype.beginVerticalAlign = function (verticalAlign) {

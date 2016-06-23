@@ -469,24 +469,22 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
 
       self.writer.context().beginColumn(width, leftOffset, getEndingCell(column, i));
       if (!column._span) {
-        var lastClipItem;
-        lastClipItem = self.writer.beginClip(width, height);
+        var lastClipItem = self.writer.beginClip(width, height);
         var ctxX = self.writer.context().x;
         var ctxY = self.writer.context().y;
         self.processNode(column);
         verticalAlignCols[colI] = self.verticalAlignItemStack.length - 1;
         addAll(positions, column.positions);
-        if (column._height > height || column._maxWidth > width) {
+        if (column._height > height || column._minWidth > width) {
           if(!lastClipItem.item.height) {
             lastClipItem.item.height = column._height;
           }
           if(!lastClipItem.item.width) {
-            lastClipItem.item.width = column._maxWidth;
+            lastClipItem.item.width = column._minWidth;
           }
           self.writer.endClip();
         } else {
-          // optimize by removing unnecessary clipping; this is ugly
-          lastClipItem.type = '';
+          self.writer.removeBeginClip(lastClipItem);
         }
         if (column.pattern) {
           self.writer.addVector({

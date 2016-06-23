@@ -251,6 +251,20 @@ ElementWriter.prototype.endClip = function () {
 	return item;
 };
 
+ElementWriter.prototype.removeBeginClip = function (item) {
+	var ctx = this.context;
+	for (var i = ctx.pages.length - 1; i >= 0; i--) {
+		var index = ctx.pages[i].items.indexOf(item);
+		if (index >= 0) {
+			ctx.pages[i].items.splice(index, 1);
+			break;
+		}
+	}
+	if (i < 0) {
+		console.log('WARNING: could not removeBeginClip!');
+	}
+};
+
 ElementWriter.prototype.beginVerticalAlign = function (verticalAlign) {
 	var ctx = this.context;
 	var page = ctx.getCurrentPage();

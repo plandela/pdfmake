@@ -17155,7 +17155,7 @@
 							h: y2 - yf,
 							lineWidth: 0,
 							color: fillColor
-						}, false, true, 0);
+						}, false, true, 1); // index is 1 here to skip the first beginClip
 					}
 				}
 			}

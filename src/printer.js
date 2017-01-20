@@ -252,6 +252,12 @@ function renderPages(pages, fontProvider, pdfKitDoc) {
         case 'endVerticalAlign':
           endVerticalAlign(item.item, pdfKitDoc);
           break;
+        case 'beginRotate':
+          beginRotate(item.item, pdfKitDoc);
+          break;
+        case 'endRotate':
+          endRotate(pdfKitDoc);
+          break;
       }
     }
     if(page.watermark){
@@ -292,6 +298,16 @@ function endVerticalAlign(item, pdfKitDoc) {
       pdfKitDoc.restore();
       break;
   }
+}
+
+function beginRotate(item, pdfKitDoc) {
+  pdfKitDoc.save();
+  pdfKitDoc.translate(item.rotate[0] - item.rotate[1], item.y + item.viewHeight + item.x + item.rotate[0]);
+  pdfKitDoc.rotate(-90);
+}
+
+function endRotate(pdfKitDoc) {
+  pdfKitDoc.restore();
 }
 
 function renderLine(line, x, y, pdfKitDoc) {

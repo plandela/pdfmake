@@ -66,6 +66,14 @@ PageElementWriter.prototype.endVerticalAlign = function(verticalAlign) {
 	return this.writer.endVerticalAlign(verticalAlign);
 };
 
+PageElementWriter.prototype.beginRotate = function(rotate) {
+	return this.writer.beginRotate(rotate);
+};
+
+PageElementWriter.prototype.endRotate = function() {
+	return this.writer.endRotate();
+};
+
 PageElementWriter.prototype.addVector = function(vector, ignoreContextX, ignoreContextY, index) {
 	return this.writer.addVector(vector, ignoreContextX, ignoreContextY, index);
 };

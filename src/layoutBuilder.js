@@ -36,6 +36,7 @@ function LayoutBuilder(pageSize, pageMargins, imageMeasure) {
     this.imageMeasure = imageMeasure;
     this.tableLayouts = {};
   this.verticalAlignItemStack = [];
+  this.rotateItemStack = [];
 }
 
 LayoutBuilder.prototype.registerTableLayouts = function (tableLayouts) {
@@ -315,6 +316,10 @@ LayoutBuilder.prototype.processNode = function(node) {
 
   var prevTop = self.writer.context().getCurrentPosition().top;
   applyMargins(function() {
+    var rotateBegin;
+    if (node.rotate) {
+      rotateBegin = self.writer.beginRotate([self.writer.context().x, self.writer.context().y]);
+    }
     var verticalAlignBegin;
     if (node.verticalAlign) {
       verticalAlignBegin = self.writer.beginVerticalAlign(node.verticalAlign);
@@ -356,6 +361,9 @@ LayoutBuilder.prototype.processNode = function(node) {
 
     if (node.verticalAlign) {
       self.verticalAlignItemStack.push({ begin: verticalAlignBegin, end: self.writer.endVerticalAlign(node.verticalAlign) });
+    }
+    if (node.rotate) {
+      self.rotateItemStack.push({ begin: rotateBegin, end: self.writer.endRotate() });
     }
 	});
   // TODO: ugly; does not work (at least) when page break in node
@@ -409,6 +417,7 @@ LayoutBuilder.prototype.processLayers = function(node) {
     self.writer.context().y = ctxY;
     self.processNode(item);
     item._verticalAlignIdx = self.verticalAlignItemStack.length - 1;
+    item._rotateIdx = self.rotateItemStack.length - 1;
     addAll(node.positions, item.positions);
     maxX = self.writer.context().x > maxX ? self.writer.context().x : maxX;
     maxY = self.writer.context().y > maxY ? self.writer.context().y : maxY;
@@ -451,9 +460,9 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
   this.tracker.auto('pageChanged', storePageBreakData, function() {
     widths = widths || columns;
 
-    self.writer.context().beginColumnGroup();
+    self.writer.context().beginColumnGroup(height);
 
-    var verticalAlignCols = {}, column;
+    var verticalAlignCols = {}, rotateCols = {}, column;
 
     for(var i = 0, l = columns.length; i < l; i++) {
       column = columns[i];
@@ -473,6 +482,7 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
         var ctxX = self.writer.context().x;
         var ctxY = self.writer.context().y;
         self.processNode(column);
+        rotateCols[colI] = self.rotateItemStack.length - 1;
         verticalAlignCols[colI] = self.verticalAlignItemStack.length - 1;
         addAll(positions, column.positions);
         if (column._height > height || column._minWidth > width) {
@@ -516,8 +526,14 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
         item.viewHeight = rowHeight;
         item.nodeHeight = column._height;
       }
+      if (column.rotate) {
+        var item = self.rotateItemStack[rotateCols[i]].begin.item;
+        item.viewHeight = rowHeight;
+        item.nodeHeight = column._height;
+      }
       if (column.layers) {
         column.layers.forEach(verticalAlignLayer);
+        column.layers.forEach(rotateLayer);
       }
     }
   });
@@ -561,6 +577,14 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
   function verticalAlignLayer(layer) {
     if(layer.verticalAlign) {
       var item = self.verticalAlignItemStack[layer._verticalAlignIdx].begin.item;
+      item.viewHeight = self.writer.context().height;
+      item.nodeHeight = layer._height;
+    }
+  }
+
+  function rotateLayer(layer) {
+    if(layer.rotate) {
+      var item = self.rotateItemStack[layer._rotateIdx].begin.item;
       item.viewHeight = self.writer.context().height;
       item.nodeHeight = layer._height;
     }
@@ -651,7 +675,9 @@ LayoutBuilder.prototype.processLeaf = function(node) {
 LayoutBuilder.prototype.buildNextLine = function(textNode) {
 	if (!textNode._inlines || textNode._inlines.length === 0) return null;
 
-	var line = new Line(this.writer.context().availableWidth);
+  var ctx = this.writer.context();
+	var line = new Line(textNode.rotate ? ctx.height || ctx.availableHeight :
+                                        ctx.availableWidth);
 
 	while(textNode._inlines && textNode._inlines.length > 0 && line.hasEnoughSpaceForInline(textNode._inlines[0])) {
 		line.addInline(textNode._inlines.shift());

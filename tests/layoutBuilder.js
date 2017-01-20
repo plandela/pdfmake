@@ -485,7 +485,6 @@ describe('LayoutBuilder', function() {
 			];
 
 			var pages = builder.layoutDocument(desc, sampleTestProvider);
-			console.log(pages[0].items);
 			assert.equal(pages[0].items.length, 5);
 
 			var starWidth = (400-40-40-78-2*4*12)/2;

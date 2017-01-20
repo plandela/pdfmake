@@ -497,6 +497,12 @@
 	        case 'endVerticalAlign':
 	          endVerticalAlign(item.item, pdfKitDoc);
 	          break;
+	        case 'beginRotate':
+	          beginRotate(item.item, pdfKitDoc);
+	          break;
+	        case 'endRotate':
+	          endRotate(pdfKitDoc);
+	          break;
 	      }
 	    }
 	    if(page.watermark){
@@ -537,6 +543,16 @@
 	      pdfKitDoc.restore();
 	      break;
 	  }
+	}
+
+	function beginRotate(item, pdfKitDoc) {
+	  pdfKitDoc.save();
+	  pdfKitDoc.translate(item.rotate[0] - item.rotate[1], item.y + item.viewHeight + item.x + item.rotate[0]);
+	  pdfKitDoc.rotate(-90);
+	}
+
+	function endRotate(pdfKitDoc) {
+	  pdfKitDoc.restore();
 	}
 
 	function renderLine(line, x, y, pdfKitDoc) {
@@ -13310,6 +13326,7 @@
 	    this.imageMeasure = imageMeasure;
 	    this.tableLayouts = {};
 	  this.verticalAlignItemStack = [];
+	  this.rotateItemStack = [];
 	}
 
 	LayoutBuilder.prototype.registerTableLayouts = function (tableLayouts) {
@@ -13589,6 +13606,10 @@
 
 	  var prevTop = self.writer.context().getCurrentPosition().top;
 	  applyMargins(function() {
+	    var rotateBegin;
+	    if (node.rotate) {
+	      rotateBegin = self.writer.beginRotate([self.writer.context().x, self.writer.context().y]);
+	    }
 	    var verticalAlignBegin;
 	    if (node.verticalAlign) {
 	      verticalAlignBegin = self.writer.beginVerticalAlign(node.verticalAlign);
@@ -13630,6 +13651,9 @@
 
 	    if (node.verticalAlign) {
 	      self.verticalAlignItemStack.push({ begin: verticalAlignBegin, end: self.writer.endVerticalAlign(node.verticalAlign) });
+	    }
+	    if (node.rotate) {
+	      self.rotateItemStack.push({ begin: rotateBegin, end: self.writer.endRotate() });
 	    }
 		});
 	  // TODO: ugly; does not work (at least) when page break in node
@@ -13683,6 +13707,7 @@
 	    self.writer.context().y = ctxY;
 	    self.processNode(item);
 	    item._verticalAlignIdx = self.verticalAlignItemStack.length - 1;
+	    item._rotateIdx = self.rotateItemStack.length - 1;
 	    addAll(node.positions, item.positions);
 	    maxX = self.writer.context().x > maxX ? self.writer.context().x : maxX;
 	    maxY = self.writer.context().y > maxY ? self.writer.context().y : maxY;
@@ -13725,9 +13750,9 @@
 	  this.tracker.auto('pageChanged', storePageBreakData, function() {
 	    widths = widths || columns;
 
-	    self.writer.context().beginColumnGroup();
+	    self.writer.context().beginColumnGroup(height);
 
-	    var verticalAlignCols = {}, column;
+	    var verticalAlignCols = {}, rotateCols = {}, column;
 
 	    for(var i = 0, l = columns.length; i < l; i++) {
 	      column = columns[i];
@@ -13747,6 +13772,7 @@
 	        var ctxX = self.writer.context().x;
 	        var ctxY = self.writer.context().y;
 	        self.processNode(column);
+	        rotateCols[colI] = self.rotateItemStack.length - 1;
 	        verticalAlignCols[colI] = self.verticalAlignItemStack.length - 1;
 	        addAll(positions, column.positions);
 	        if (column._height > height || column._minWidth > width) {
@@ -13790,8 +13816,14 @@
 	        item.viewHeight = rowHeight;
 	        item.nodeHeight = column._height;
 	      }
+	      if (column.rotate) {
+	        var item = self.rotateItemStack[rotateCols[i]].begin.item;
+	        item.viewHeight = rowHeight;
+	        item.nodeHeight = column._height;
+	      }
 	      if (column.layers) {
 	        column.layers.forEach(verticalAlignLayer);
+	        column.layers.forEach(rotateLayer);
 	      }
 	    }
 	  });
@@ -13835,6 +13867,14 @@
 	  function verticalAlignLayer(layer) {
 	    if(layer.verticalAlign) {
 	      var item = self.verticalAlignItemStack[layer._verticalAlignIdx].begin.item;
+	      item.viewHeight = self.writer.context().height;
+	      item.nodeHeight = layer._height;
+	    }
+	  }
+
+	  function rotateLayer(layer) {
+	    if(layer.rotate) {
+	      var item = self.rotateItemStack[layer._rotateIdx].begin.item;
 	      item.viewHeight = self.writer.context().height;
 	      item.nodeHeight = layer._height;
 	    }
@@ -13925,7 +13965,9 @@
 	LayoutBuilder.prototype.buildNextLine = function(textNode) {
 		if (!textNode._inlines || textNode._inlines.length === 0) return null;
 
-		var line = new Line(this.writer.context().availableWidth);
+	  var ctx = this.writer.context();
+		var line = new Line(textNode.rotate ? ctx.height || ctx.availableHeight :
+	                                        ctx.availableWidth);
 
 		while(textNode._inlines && textNode._inlines.length > 0 && line.hasEnoughSpaceForInline(textNode._inlines[0])) {
 			line.addInline(textNode._inlines.shift());
@@ -16000,7 +16042,7 @@
 		this.addPage(pageSize);
 	}
 
-	DocumentContext.prototype.beginColumnGroup = function() {
+	DocumentContext.prototype.beginColumnGroup = function(height) {
 		this.snapshots.push({
 			x: this.x,
 			y: this.y,
@@ -16013,6 +16055,7 @@
 		});
 
 		this.lastColumnWidth = 0;
+		if (height) this.height = height;
 	};
 
 	DocumentContext.prototype.beginColumn = function(width, offset, endingCell) {
@@ -16323,6 +16366,14 @@
 
 	PageElementWriter.prototype.endVerticalAlign = function(verticalAlign) {
 		return this.writer.endVerticalAlign(verticalAlign);
+	};
+
+	PageElementWriter.prototype.beginRotate = function(rotate) {
+		return this.writer.beginRotate(rotate);
+	};
+
+	PageElementWriter.prototype.endRotate = function() {
+		return this.writer.endRotate();
 	};
 
 	PageElementWriter.prototype.addVector = function(vector, ignoreContextX, ignoreContextY, index) {
@@ -16651,6 +16702,8 @@
 				case 'endVerticalAlign':
 				case 'beginClip':
 				case 'endClip':
+				case 'beginRotate':
+				case 'endRotate':
 					var it = pack(item.item);
 					it.x = (it.x || 0) + (useBlockXOffset ? (block.xOffset || 0) : ctx.x);
 					it.y = (it.y || 0) + (useBlockYOffset ? (block.yOffset || 0) : ctx.y);
@@ -16719,6 +16772,27 @@
 		var item = {
 			type: 'endVerticalAlign',
 			item: { verticalAlign: verticalAlign }
+		};
+		page.items.push(item);
+		return item;
+	};
+
+	ElementWriter.prototype.beginRotate = function (rotate) {
+		var ctx = this.context;
+		var page = ctx.getCurrentPage();
+		var item = {
+			type: 'beginRotate',
+			item: { rotate: rotate }
+		};
+		page.items.push(item);
+		return item;
+	};
+
+	ElementWriter.prototype.endRotate = function () {
+		var ctx = this.context;
+		var page = ctx.getCurrentPage();
+		var item = {
+			type: 'endRotate'
 		};
 		page.items.push(item);
 		return item;

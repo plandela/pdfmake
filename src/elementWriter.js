@@ -214,6 +214,8 @@ ElementWriter.prototype.addFragment = function (block, useBlockXOffset, useBlock
 			case 'endVerticalAlign':
 			case 'beginClip':
 			case 'endClip':
+			case 'beginRotate':
+			case 'endRotate':
 				var it = pack(item.item);
 				it.x = (it.x || 0) + (useBlockXOffset ? (block.xOffset || 0) : ctx.x);
 				it.y = (it.y || 0) + (useBlockYOffset ? (block.yOffset || 0) : ctx.y);
@@ -282,6 +284,27 @@ ElementWriter.prototype.endVerticalAlign = function (verticalAlign) {
 	var item = {
 		type: 'endVerticalAlign',
 		item: { verticalAlign: verticalAlign }
+	};
+	page.items.push(item);
+	return item;
+};
+
+ElementWriter.prototype.beginRotate = function (rotate) {
+	var ctx = this.context;
+	var page = ctx.getCurrentPage();
+	var item = {
+		type: 'beginRotate',
+		item: { rotate: rotate }
+	};
+	page.items.push(item);
+	return item;
+};
+
+ElementWriter.prototype.endRotate = function () {
+	var ctx = this.context;
+	var page = ctx.getCurrentPage();
+	var item = {
+		type: 'endRotate'
 	};
 	page.items.push(item);
 	return item;

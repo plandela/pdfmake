@@ -13768,7 +13768,7 @@
 
 	      self.writer.context().beginColumn(width, leftOffset, getEndingCell(column, i));
 	      if (!column._span) {
-	        var lastClipItem = self.writer.beginClip(width, height);
+	        column._clipItem = self.writer.beginClip(width, height);
 	        var ctxX = self.writer.context().x;
 	        var ctxY = self.writer.context().y;
 	        self.processNode(column);
@@ -13776,15 +13776,15 @@
 	        verticalAlignCols[colI] = self.verticalAlignItemStack.length - 1;
 	        addAll(positions, column.positions);
 	        if (column._height > height || column._minWidth > width) {
-	          if(!lastClipItem.item.height) {
-	            lastClipItem.item.height = column._height;
+	          if(!column._clipItem.item.height) {
+	            column._clipItem.item.height = column._height;
 	          }
-	          if(!lastClipItem.item.width) {
-	            lastClipItem.item.width = column._minWidth;
+	          if(!column._clipItem.item.width) {
+	            column._clipItem.item.width = column._minWidth;
 	          }
 	          self.writer.endClip();
 	        } else {
-	          self.writer.removeBeginClip(lastClipItem);
+	          self.writer.removeBeginClip(column._clipItem);
 	        }
 	        if (column.pattern) {
 	          self.writer.addVector({
@@ -13794,7 +13794,6 @@
 	            w: width,
 	            h: height,
 	            lineWidth: 0,
-	            color: column.color,
 	            fillOpacity: column.fillOpacity,
 	            pattern: column.pattern
 	          }, true, true);
@@ -16646,6 +16645,9 @@
 			position = this.getCurrentPositionOnPage();
 
 		if (page) {
+			if (index && (typeof index === 'object')) {
+				index = page.items.indexOf(index);
+			}
 			offsetVector(vector, ignoreContextX ? 0 : context.x, ignoreContextY ? 0 : context.y);
 			addPageItem(page, {
 				type: 'vector',
@@ -16746,7 +16748,7 @@
 		for (var i = ctx.pages.length - 1; i >= 0; i--) {
 			var index = ctx.pages[i].items.indexOf(item);
 			if (index >= 0) {
-				ctx.pages[i].items.splice(index, 1);
+				ctx.pages[i].items[index].type = '';
 				break;
 			}
 		}

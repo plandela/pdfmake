@@ -478,7 +478,7 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
 
       self.writer.context().beginColumn(width, leftOffset, getEndingCell(column, i));
       if (!column._span) {
-        var lastClipItem = self.writer.beginClip(width, height);
+        column._clipItem = self.writer.beginClip(width, height);
         var ctxX = self.writer.context().x;
         var ctxY = self.writer.context().y;
         self.processNode(column);
@@ -486,15 +486,15 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
         verticalAlignCols[colI] = self.verticalAlignItemStack.length - 1;
         addAll(positions, column.positions);
         if (column._height > height || column._minWidth > width) {
-          if(!lastClipItem.item.height) {
-            lastClipItem.item.height = column._height;
+          if(!column._clipItem.item.height) {
+            column._clipItem.item.height = column._height;
           }
-          if(!lastClipItem.item.width) {
-            lastClipItem.item.width = column._minWidth;
+          if(!column._clipItem.item.width) {
+            column._clipItem.item.width = column._minWidth;
           }
           self.writer.endClip();
         } else {
-          self.writer.removeBeginClip(lastClipItem);
+          self.writer.removeBeginClip(column._clipItem);
         }
         if (column.pattern) {
           self.writer.addVector({
@@ -504,7 +504,6 @@ LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, 
             w: width,
             h: height,
             lineWidth: 0,
-            color: column.color,
             fillOpacity: column.fillOpacity,
             pattern: column.pattern
           }, true, true);

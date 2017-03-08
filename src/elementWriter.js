@@ -158,6 +158,9 @@ ElementWriter.prototype.addVector = function (vector, ignoreContextX, ignoreCont
 		position = this.getCurrentPositionOnPage();
 
 	if (page) {
+		if (index && (typeof index === 'object')) {
+			index = page.items.indexOf(index);
+		}
 		offsetVector(vector, ignoreContextX ? 0 : context.x, ignoreContextY ? 0 : context.y);
 		addPageItem(page, {
 			type: 'vector',
@@ -258,7 +261,7 @@ ElementWriter.prototype.removeBeginClip = function (item) {
 	for (var i = ctx.pages.length - 1; i >= 0; i--) {
 		var index = ctx.pages[i].items.indexOf(item);
 		if (index >= 0) {
-			ctx.pages[i].items.splice(index, 1);
+			ctx.pages[i].items[index].type = '';
 			break;
 		}
 	}

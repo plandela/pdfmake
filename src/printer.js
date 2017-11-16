@@ -149,7 +149,7 @@ PdfPrinter.prototype.createPdfKitDocument = function(docDefinition, options) {
     docDefinition.pageBreakBefore
   );
 
-  var patterns = createPatterns(docDefinition.patterns || {});
+  var patterns = createPatterns(docDefinition.patterns || {}, this.pdfKitDoc);
 
   renderPages(pages, this.fontProvider, patterns, this.pdfKitDoc);
 
@@ -571,8 +571,9 @@ function renderImage(image, x, y, pdfKitDoc) {
 
 function createPatterns(patternDefinitions, pdfKitDoc) {
   var patterns = {};
-  Object.keys(patternDefinitions).forEach(function(p) {
-    patterns[p] = pdfKitDoc.pattern(
+  Object.keys(patternDefinitions).forEach(function(pKey) {
+    var p = patternDefinitions[pKey];
+    patterns[pKey] = pdfKitDoc.pattern(
       p.boundingBox,
       p.xStep,
       p.yStep,

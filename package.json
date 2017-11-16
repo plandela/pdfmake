@@ -7,7 +7,7 @@
     "test": "tests"
   },
   "dependencies": {
-    "pdfkit": "strokovnjaka/pdfkit#master",
+    "pdfkit": "jesenko/pdfkit#master",
     "lodash": "^3.1.0"
   },
   "devDependencies": {

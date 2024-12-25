@@ -476,9 +476,10 @@ TableProcessor.prototype.endRow = function (rowIndex, writer, pageBreaks) {
 				if (!isNumber(fillOpacity)) {
 					fillOpacity = isFunction(this.layout.fillOpacity) ? this.layout.fillOpacity(rowIndex, this.tableNode, colIndex) : this.layout.fillOpacity;
 				}
+				var overlay = body[rowIndex][colIndex].overlay;
 				var overlayPattern = body[rowIndex][colIndex].overlayPattern;
 				var overlayOpacity = body[rowIndex][colIndex].overlayOpacity;
-				if (fillColor || overlayPattern) {
+				if (fillColor || overlay || overlayPattern) {
 					var widthLeftBorder = leftCellBorder ? this.layout.vLineWidth(colIndex, this.tableNode) : 0;
 					var widthRightBorder;
 					if ((colIndex === 0 || colIndex + 1 == body[rowIndex].length) && !rightCellBorder) {
@@ -521,6 +522,13 @@ TableProcessor.prototype.endRow = function (rowIndex, writer, pageBreaks) {
 							color: overlayPattern,
 							fillOpacity: overlayOpacity
 						}, false, true);
+					}
+
+					if (overlay) {
+						var overlayVectors = overlay({x: x1f, y: y1f, w: bgWidth, h: bgHeight });
+						overlayVectors.forEach(function (vector) {
+							writer.addVector(vector, false, true);
+						});
 					}
 				}
 			}

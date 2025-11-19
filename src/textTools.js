@@ -26,10 +26,15 @@ function TextTools(fontProvider) {
  * and their min/max widths
  * @param  {Object} textArray - an array of inline-definition-objects (or strings)
  * @param  {Object} styleContextStack current style stack
+ * @param  {Object} node document node or undefined
  * @return {Object}                   collection of inlines, minWidth, maxWidth
  */
-TextTools.prototype.buildInlines = function (textArray, styleContextStack) {
+TextTools.prototype.buildInlines = function (textArray, styleContextStack, node) {
 	var measured = measure(this.fontProvider, textArray, styleContextStack);
+
+	if (node && node.transformInlines) {
+		measured = node.transformInlines(measured);
+	}
 
 	var minWidth = 0,
 		maxWidth = 0,
@@ -350,7 +355,6 @@ function measure(fontProvider, textArray, styleContextStack) {
 
 		var font = fontProvider.provideFont(fontName, bold, italics);
 
-		item.width = widthOfString(item.text, font, fontSize, characterSpacing, fontFeatures);
 		item.height = font.lineHeight(fontSize) * lineHeight;
 
 		if (!item.leadingCut) {
@@ -386,6 +390,13 @@ function measure(fontProvider, textArray, styleContextStack) {
 		item.opacity = opacity;
 		item.sup = sup;
 		item.sub = sub;
+
+		// need a function not an arrow function to get 'this'
+		item.setText = function(text) {
+			this.text = text;
+			this.width = widthOfString(text, this.font, this.fontSize, this.characterSpacing, this.fontFeatures);
+		};
+		item.setText(item.text);
 	});
 
 	return normalized;

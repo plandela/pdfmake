@@ -26,10 +26,19 @@ function TextTools(fontProvider) {
  * and their min/max widths
  * @param  {Object} textArray - an array of inline-definition-objects (or strings)
  * @param  {Object} styleContextStack current style stack
+ * @param  {Object} node document node or undefined
  * @return {Object}                   collection of inlines, minWidth, maxWidth
  */
-TextTools.prototype.buildInlines = function (textArray, styleContextStack) {
+TextTools.prototype.buildInlines = function (textArray, styleContextStack, node) {
 	var measured = measure(this.fontProvider, textArray, styleContextStack);
+
+	if (node && node.transformInlines) {
+		measured = node.transformInlines(measured, {
+			widthOfString,
+			fontProvider: this.fontProvider,
+			getStyleProperty: property => getStyleProperty(node, styleContextStack, property, null)
+		});
+	}
 
 	var minWidth = 0,
 		maxWidth = 0,

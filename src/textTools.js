@@ -33,7 +33,7 @@ TextTools.prototype.buildInlines = function (textArray, styleContextStack, node)
 	var measured = measure(this.fontProvider, textArray, styleContextStack);
 
 	if (node && node.transformInlines) {
-		measured = node.transformInlines(measured);
+		measured = node.transformInlines(measured, {widthOfString, fontProvider: this.fontProvider});
 	}
 
 	var minWidth = 0,
@@ -355,6 +355,7 @@ function measure(fontProvider, textArray, styleContextStack) {
 
 		var font = fontProvider.provideFont(fontName, bold, italics);
 
+		item.width = widthOfString(item.text, font, fontSize, characterSpacing, fontFeatures);
 		item.height = font.lineHeight(fontSize) * lineHeight;
 
 		if (!item.leadingCut) {
@@ -390,13 +391,6 @@ function measure(fontProvider, textArray, styleContextStack) {
 		item.opacity = opacity;
 		item.sup = sup;
 		item.sub = sub;
-
-		// need a function not an arrow function to get 'this'
-		item.setText = function(text) {
-			this.text = text;
-			this.width = widthOfString(text, this.font, this.fontSize, this.characterSpacing, this.fontFeatures);
-		};
-		item.setText(item.text);
 	});
 
 	return normalized;
